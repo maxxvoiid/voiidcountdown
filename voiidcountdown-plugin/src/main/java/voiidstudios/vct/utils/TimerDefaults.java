@@ -4,6 +4,7 @@ import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 
 import voiidstudios.vct.VoiidCountdownTimer;
+import voiidstudios.vct.api.TimerMode;
 import voiidstudios.vct.configs.model.TimerConfig;
 
 public class TimerDefaults {
@@ -49,7 +50,7 @@ public class TimerDefaults {
             }
         }
 
-        return new TimerSettings(text, sound, volume, pitch, color, style, hasSound, usedId);
+        return new TimerSettings(text, sound, volume, pitch, color, style, hasSound, usedId, TimerMode.COUNTDOWN, null);
     }
 
     public static class TimerSettings {
@@ -61,9 +62,12 @@ public class TimerDefaults {
         public final BarStyle style;
         public final boolean hasSound;
         public final String id;
+        public final TimerMode mode;
+        public final Integer targetSeconds;
 
         public TimerSettings(String text, String sound, float volume, float pitch,
-                             BarColor color, BarStyle style, boolean hasSound, String id) {
+                             BarColor color, BarStyle style, boolean hasSound, String id,
+                             TimerMode mode, Integer targetSeconds) {
             this.text = text;
             this.sound = sound;
             this.volume = volume;
@@ -72,6 +76,8 @@ public class TimerDefaults {
             this.style = style;
             this.hasSound = hasSound;
             this.id = id;
+            this.mode = mode == null ? TimerMode.COUNTDOWN : mode;
+            this.targetSeconds = targetSeconds;
         }
     }
 }

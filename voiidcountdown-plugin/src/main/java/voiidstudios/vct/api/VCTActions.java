@@ -14,23 +14,64 @@ import voiidstudios.vct.utils.TimerDefaults;
 
 public class VCTActions {
     public static Timer createTimer(String timeHHMMSS, @Nullable String timerId, @Nullable CommandSender sender) {
-        int totalSeconds = helper_parseTimeToSeconds(timeHHMMSS);
-        if (totalSeconds <= 0) return null;
+        return createTimer(timeHHMMSS, timerId, TimerMode.COUNTDOWN, null, sender);
+    }
 
-        String usedTimerId = (timerId == null || timerId.isEmpty()) ? "default" : timerId;
-        TimerDefaults.TimerSettings settings = TimerDefaults.getSettings(usedTimerId);
+    public static Timer createTimer(String timeHHMMSS, @Nullable String timerId, TimerMode mode, @Nullable Integer targetSeconds, @Nullable CommandSender sender) {
+        int totalSeconds = helper_parseTimeToSeconds(timeHHMMSS);
+        if (totalSeconds < 0) return null;
+
+        TimerMode resolvedMode = mode == null ? TimerMode.COUNTDOWN : mode;
+        if (resolvedMode == TimerMode.COUNTDOWN && totalSeconds <= 0) return null;
+
+        return createTimer(totalSeconds, timerId, resolvedMode, targetSeconds, sender);
+    }
+
+    public static Timer createTimer(int initialSeconds, @Nullable String timerId, TimerMode mode, @Nullable Integer targetSeconds, @Nullable CommandSender sender) {
+        TimerMode resolvedMode = mode == null ? TimerMode.COUNTDOWN : mode;
+        if (resolvedMode == TimerMode.COUNTDOWN && initialSeconds <= 0) return null;
+        if (resolvedMode == TimerMode.STOPWATCH && initialSeconds < 0) return null;
+
+        return createTimerInternal(initialSeconds, timerId, resolvedMode, targetSeconds, sender);
+    }
+
+    public static Timer createStopwatch(@Nullable String timerId, @Nullable Integer targetSeconds, @Nullable CommandSender sender) {
+        return createTimerInternal(0, timerId, TimerMode.STOPWATCH, targetSeconds, sender);
+    }
+
+    public static Timer createStopwatch(@Nullable String timerId, @Nullable String targetHHMMSS, @Nullable CommandSender sender) {
+        Integer parsedTarget = null;
+        if (targetHHMMSS != null && !targetHHMMSS.isEmpty()) {
+            int totalTarget = helper_parseTimeToSeconds(targetHHMMSS);
+            if (totalTarget >= 0) {
+                parsedTarget = totalTarget;
+            }
+        }
+        return createStopwatch(timerId, parsedTarget, sender);
+    }
+
+    private static Timer createTimerInternal(int initialSeconds, @Nullable String timerId, TimerMode mode, @Nullable Integer targetSeconds, @Nullable CommandSender sender) {
+        String requestedId = (timerId == null || timerId.isEmpty()) ? "default" : timerId;
+        TimerDefaults.TimerSettings settings = TimerDefaults.getSettings(requestedId);
+        String usedId = settings.id != null ? settings.id : requestedId;
+
         TimerManager.getInstance().removeTimer();
 
+        TimerMode resolvedMode = mode != null ? mode : settings.mode;
+        Integer resolvedTarget = targetSeconds != null ? targetSeconds : settings.targetSeconds;
+
         Timer timer = new Timer(
-                totalSeconds,
+                initialSeconds,
+                resolvedMode,
                 settings.text,
                 settings.sound,
                 settings.color,
                 settings.style,
-                usedTimerId,
+                usedId,
                 settings.hasSound,
                 settings.volume,
-                settings.pitch
+                settings.pitch,
+                resolvedTarget
         );
 
         timer.start();

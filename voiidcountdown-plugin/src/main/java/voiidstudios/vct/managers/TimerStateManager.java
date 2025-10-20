@@ -5,6 +5,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 
 import voiidstudios.vct.VoiidCountdownTimer;
 import voiidstudios.vct.api.Timer;
+import voiidstudios.vct.api.TimerMode;
 import voiidstudios.vct.configs.model.CustomConfig;
 import voiidstudios.vct.utils.TimerDefaults;
 
@@ -36,8 +37,15 @@ public class TimerStateManager {
         cfg.set("active", true);
         cfg.set("timer_id", timer.getTimerId());
         cfg.set("initial", timer.getInitialSeconds());
-        cfg.set("remaining", timer.getRemainingSeconds());
+        if (timer.getMode() == TimerMode.COUNTDOWN) {
+            cfg.set("remaining", timer.getRemainingSeconds());
+        } else {
+            cfg.set("remaining", timer.getCurrentSeconds());
+        }
         cfg.set("paused", timer.isPaused());
+        cfg.set("mode", timer.getMode().name());
+        cfg.set("target", timer.getTargetSeconds());
+        cfg.set("elapsed", timer.getElapsedSeconds());
         stateConfig.saveConfig();
     }
 
@@ -50,15 +58,24 @@ public class TimerStateManager {
         int initial = cfg.getInt("initial", -1);
         int remaining = cfg.getInt("remaining", -1);
         boolean paused = cfg.getBoolean("paused", false);
+        TimerDefaults.TimerSettings settings = TimerDefaults.getSettings(savedId);
+        TimerMode mode = settings.mode;
+        String storedMode = cfg.getString("mode", null);
+        if (storedMode != null) {
+            try {
+                mode = TimerMode.valueOf(storedMode);
+            } catch (IllegalArgumentException ignored) { /* keep default */ }
+        }
+        Integer target = cfg.isInt("target") ? cfg.getInt("target") : settings.targetSeconds;
 
-        if (initial <= 0 || remaining <= 0) return;
+        if (initial < 0 || remaining < 0) return;
 
         Bukkit.getConsoleSender().sendMessage(MessagesManager.getColoredMessage(VoiidCountdownTimer.prefix+"&rLoading the state of timer " + savedId));
-        TimerDefaults.TimerSettings settings = TimerDefaults.getSettings(savedId);
-        String usedId = savedId;
+        String usedId = settings.id != null ? settings.id : savedId;
 
         Timer timer = new Timer(
                 initial,
+                mode,
                 settings.text,
                 settings.sound,
                 settings.color,
@@ -66,14 +83,22 @@ public class TimerStateManager {
                 usedId,
                 settings.hasSound,
                 settings.volume,
-                settings.pitch
+                settings.pitch,
+                target
         );
 
         TimerManager.getInstance().removeTimer();
-        timer.setSeconds(remaining);
+        timer.restoreState(initial, remaining, target);
         TimerManager.getInstance().setTimer(timer);
 
-        Bukkit.getConsoleSender().sendMessage(MessagesManager.getColoredMessage(VoiidCountdownTimer.prefix+"&aLoaded the state of timer " + savedId + " &e(" + remaining + "/" + initial + " seconds | Paused: " + paused + ")"));
+        String stateDetails;
+        if (mode == TimerMode.COUNTDOWN) {
+            stateDetails = remaining + "/" + initial + " seconds";
+        } else {
+            stateDetails = remaining + " seconds elapsed";
+        }
+
+        Bukkit.getConsoleSender().sendMessage(MessagesManager.getColoredMessage(VoiidCountdownTimer.prefix+"&aLoaded the state of timer " + savedId + " &e(" + stateDetails + " | Mode: " + mode + " | Paused: " + paused + ")"));
 
         if (!paused) {
             timer.start();

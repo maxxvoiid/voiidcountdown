@@ -10,6 +10,7 @@ import voiidstudios.vct.api.update.UpdateDownloaderGithub;
 import voiidstudios.vct.commands.MainCommand;
 import voiidstudios.vct.configs.ConfigsManager;
 import voiidstudios.vct.listeners.PlayerListener;
+import voiidstudios.vct.managers.AddonManager;
 import voiidstudios.vct.managers.DependencyManager;
 import voiidstudios.vct.managers.DynamicsManager;
 import voiidstudios.vct.managers.MessagesManager;
@@ -33,6 +34,7 @@ public final class VoiidCountdownTimer extends JavaPlugin {
     private static MessagesManager messagesManager;
     private static TimerStateManager timerStateManager;
     private static DependencyManager dependencyManager;
+    private static AddonManager addonManager;
 
     public void onEnable() {
         instance = this;
@@ -42,6 +44,8 @@ public final class VoiidCountdownTimer extends JavaPlugin {
         setVersion();
         registerCommands();
         registerEvents();
+
+        addonManager = new AddonManager(this);
 
         if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
             new PAPIExpansion(this).register();
@@ -68,6 +72,10 @@ public final class VoiidCountdownTimer extends JavaPlugin {
     public void onDisable() {
         if (timerStateManager != null && configsManager.getMainConfigManager().isSave_state_timers()) {
             timerStateManager.saveState();
+        }
+
+        if (addonManager != null) {
+            addonManager.unregisterAll();
         }
 
         Bukkit.getConsoleSender().sendMessage(
@@ -173,5 +181,9 @@ public final class VoiidCountdownTimer extends JavaPlugin {
 
     public static TimerStateManager getTimerStateManager() {
         return timerStateManager;
+    }
+
+    public static AddonManager getAddonManager() {
+        return addonManager;
     }
 }

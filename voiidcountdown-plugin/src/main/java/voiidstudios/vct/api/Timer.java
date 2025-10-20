@@ -17,6 +17,7 @@ import voiidstudios.vct.configs.model.TimerConfig;
 
 public class Timer implements Runnable {
     private int seconds;
+    private final TimerMode mode;
     private final BossBar bossbar;
     private Object task;
     private boolean hasSound;
@@ -29,11 +30,18 @@ public class Timer implements Runnable {
     private final int maxValue = 359999;
     private final int minValue = 0;
     private final String timerId;
+    private Integer targetSeconds;
 
     public Timer(int seconds, String timeText, String timeSound, BarColor barcolor, BarStyle barstyle, String timerId, boolean hasSoundd, float soundVolumee, float soundPitchh) {
+        this(seconds, TimerMode.COUNTDOWN, timeText, timeSound, barcolor, barstyle, timerId, hasSoundd, soundVolumee, soundPitchh, null);
+    }
+
+    public Timer(int seconds, TimerMode mode, String timeText, String timeSound, BarColor barcolor, BarStyle barstyle, String timerId, boolean hasSoundd, float soundVolumee, float soundPitchh, Integer targetSeconds) {
+        this.mode = mode == null ? TimerMode.COUNTDOWN : mode;
         this.seconds = seconds;
         this.initialSeconds = seconds;
         this.timerId = timerId;
+        this.targetSeconds = normalizeTarget(targetSeconds);
 
         this.refreshInterval = VoiidCountdownTimer.getConfigsManager().getMainConfigManager().getRefresh_ticks();
         this.hasSound = hasSoundd;
@@ -46,12 +54,51 @@ public class Timer implements Runnable {
         this.bossbar = Bukkit.createBossBar("", barcolor, barstyle, new org.bukkit.boss.BarFlag[0]);
     }
 
+    private Integer normalizeTarget(Integer target) {
+        if (target == null) {
+            return this.mode == TimerMode.COUNTDOWN ? 0 : null;
+        }
+        if (target < minValue) {
+            return minValue;
+        }
+        return Math.min(target, maxValue);
+    }
+
     public int getInitialSeconds() {
         return this.initialSeconds;
     }
 
     public int getRemainingSeconds() {
+        if (this.mode == TimerMode.COUNTDOWN) {
+            return this.seconds;
+        }
+        if (this.targetSeconds != null) {
+            return Math.max(0, this.targetSeconds - this.seconds);
+        }
         return this.seconds;
+    }
+
+    public int getCurrentSeconds() {
+        return this.seconds;
+    }
+
+    public int getElapsedSeconds() {
+        if (this.mode == TimerMode.COUNTDOWN) {
+            return Math.max(0, this.initialSeconds - this.seconds);
+        }
+        return this.seconds;
+    }
+
+    public TimerMode getMode() {
+        return this.mode;
+    }
+
+    public Integer getTargetSeconds() {
+        return this.targetSeconds;
+    }
+
+    public void setTargetSeconds(Integer targetSeconds) {
+        this.targetSeconds = normalizeTarget(targetSeconds);
     }
 
     public String getTimertext() {
@@ -146,8 +193,8 @@ public class Timer implements Runnable {
         }
     }
 
-    private void startTask(int seconds) {
-        final int increment = -1;
+    private void startTask() {
+        final int increment = this.mode.getDirection();
 
         Runnable taskRunnable = new Runnable() {
             private int tickCounter = 0;
@@ -180,12 +227,10 @@ public class Timer implements Runnable {
                     String phasesText = VoiidCountdownTimer.getPhasesManager().formatPhases(rawText);
                     updateBossBarTitle(phasesText);
 
-                    double progress = (double) Timer.this.seconds / (double) Timer.this.initialSeconds;
-                    progress = Math.max(0.0, Math.min(1.0, progress));
-                    Timer.this.bossbar.setProgress(progress);
+                    Timer.this.bossbar.setProgress(calculateProgress());
                 }
 
-                if (Timer.this.seconds <= 0) {
+                if (Timer.this.mode.shouldFinish(Timer.this.seconds, Timer.this.targetSeconds)) {
                     stop();
                     Bukkit.getPluginManager().callEvent(new VCTEvent(Timer.this, VCTEvent.VCTEventType.FINISH, null));
                     if (ServerCompatibility.isFolia()) {
@@ -217,6 +262,30 @@ public class Timer implements Runnable {
                 1L, 1L
             );
         }
+    }
+
+    private double calculateProgress() {
+        if (this.mode == TimerMode.COUNTDOWN) {
+            if (this.initialSeconds <= 0) {
+                return 0.0;
+            }
+            double progress = (double) this.seconds / (double) this.initialSeconds;
+            return Math.max(0.0, Math.min(1.0, progress));
+        }
+
+        int baseline = 0;
+        if (this.targetSeconds != null && this.targetSeconds > 0) {
+            baseline = this.targetSeconds;
+        } else {
+            baseline = Math.max(this.initialSeconds, this.seconds);
+        }
+
+        if (baseline <= 0) {
+            return 0.0;
+        }
+
+        double progress = (double) this.seconds / (double) baseline;
+        return Math.max(0.0, Math.min(1.0, progress));
     }
 
     public static void refreshTimerText() {
@@ -261,7 +330,13 @@ public class Timer implements Runnable {
     }
 
     public void setSeconds(int seconds) {
-        this.seconds = seconds;
+        this.seconds = Math.max(this.minValue, Math.min(this.maxValue, seconds));
+    }
+
+    public void restoreState(int initialSeconds, int currentSeconds, Integer targetSeconds) {
+        this.initialSeconds = Math.max(this.minValue, Math.min(this.maxValue, initialSeconds));
+        this.seconds = Math.max(this.minValue, Math.min(this.maxValue, currentSeconds));
+        setTargetSeconds(targetSeconds);
     }
 
     private String[] splitDigits(String value) {
@@ -270,6 +345,7 @@ public class Timer implements Runnable {
     }
 
     private String formatTime(long time) {
+        time = Math.max(0, time);
         long hours = time / 3600L;
         long minutes = time % 3600L / 60L;
         long seconds = time % 60L;
@@ -277,16 +353,19 @@ public class Timer implements Runnable {
     }
 
     private String formatTimeHH(long time) {
+        time = Math.max(0, time);
         long hours = time / 3600L;
         return String.format("%02d", hours);
     }
 
     private String formatTimeMM(long time) {
+        time = Math.max(0, time);
         long minutes = time % 3600L / 60L;
         return String.format("%02d", minutes);
     }
 
     private String formatTimeSS(long time) {
+        time = Math.max(0, time);
         long seconds = time % 60L;
         return String.format("%02d", seconds);
     }
@@ -300,43 +379,43 @@ public class Timer implements Runnable {
     }
 
     public String getTimeLeft() {
-        return formatTime(this.seconds);
+        return formatTime(getRemainingSeconds());
     }
 
     public String getTimeLeftHH() {
-        return formatTimeHH(this.seconds);
+        return formatTimeHH(getRemainingSeconds());
     }
 
     public String getTimeLeftHHDigit1() {
-        return splitDigits(formatTimeHH(this.seconds))[0];
+        return splitDigits(formatTimeHH(getRemainingSeconds()))[0];
     }
 
     public String getTimeLeftHHDigit2() {
-        return splitDigits(formatTimeHH(this.seconds))[1];
+        return splitDigits(formatTimeHH(getRemainingSeconds()))[1];
     }
 
     public String getTimeLeftMM() {
-        return formatTimeMM(this.seconds);
+        return formatTimeMM(getRemainingSeconds());
     }
 
     public String getTimeLeftMMDigit1() {
-        return splitDigits(formatTimeMM(this.seconds))[0];
+        return splitDigits(formatTimeMM(getRemainingSeconds()))[0];
     }
 
     public String getTimeLeftMMDigit2() {
-        return splitDigits(formatTimeMM(this.seconds))[1];
+        return splitDigits(formatTimeMM(getRemainingSeconds()))[1];
     }
 
     public String getTimeLeftSS() {
-        return formatTimeSS(this.seconds);
+        return formatTimeSS(getRemainingSeconds());
     }
 
     public String getTimeLeftSSDigit1() {
-        return splitDigits(formatTimeSS(this.seconds))[0];
+        return splitDigits(formatTimeSS(getRemainingSeconds()))[0];
     }
 
     public String getTimeLeftSSDigit2() {
-        return splitDigits(formatTimeSS(this.seconds))[1];
+        return splitDigits(formatTimeSS(getRemainingSeconds()))[1];
     }
 
     public boolean isActive() {
@@ -344,14 +423,20 @@ public class Timer implements Runnable {
     }
 
     public boolean isPaused() {
-        return this.task == null && this.seconds > 0;
+        if (this.task != null) {
+            return false;
+        }
+        if (this.mode == TimerMode.COUNTDOWN) {
+            return this.seconds > 0;
+        }
+        return true;
     }
 
     public void start() {
         if (task != null) {
             stop();
         }
-        startTask(this.seconds);
+        startTask();
     }
 
     public void stop() {
@@ -371,32 +456,46 @@ public class Timer implements Runnable {
     }
 
     public void add(int addSeconds) {
-        if (this.seconds + addSeconds > this.maxValue) {
-            this.seconds = this.maxValue;
-            this.initialSeconds = this.maxValue;
+        if (addSeconds <= 0) {
+            return;
+        }
+
+        if (this.mode == TimerMode.COUNTDOWN) {
+            if (this.seconds + addSeconds > this.maxValue) {
+                this.seconds = this.maxValue;
+                this.initialSeconds = this.maxValue;
+            } else {
+                this.seconds += addSeconds;
+                this.initialSeconds += addSeconds;
+            }
         } else {
-            this.seconds += addSeconds;
-            this.initialSeconds += addSeconds;
+            this.seconds = Math.min(this.maxValue, this.seconds + addSeconds);
         }
     }
 
     public void set(int setSeconds) {
-        if (setSeconds > this.maxValue) {
-            this.seconds = this.maxValue;
-            this.initialSeconds = this.maxValue;
-        } else if (setSeconds < this.minValue) {
-            this.seconds = this.minValue;
-            this.initialSeconds = this.minValue;
-        } else {
-            this.seconds = setSeconds;
-            this.initialSeconds = setSeconds;
+        int clamped = Math.max(this.minValue, Math.min(this.maxValue, setSeconds));
+        this.seconds = clamped;
+
+        if (this.mode == TimerMode.COUNTDOWN) {
+            this.initialSeconds = clamped;
+        } else if (this.targetSeconds != null && this.targetSeconds < this.seconds) {
+            this.targetSeconds = this.seconds;
         }
     }
 
     public void take(int takeSeconds) {
-        if (this.seconds - takeSeconds >= this.minValue) {
-            this.seconds -= takeSeconds;
-            this.initialSeconds -= takeSeconds;
+        if (takeSeconds <= 0) {
+            return;
+        }
+
+        if (this.mode == TimerMode.COUNTDOWN) {
+            if (this.seconds - takeSeconds >= this.minValue) {
+                this.seconds -= takeSeconds;
+                this.initialSeconds = Math.max(this.seconds, this.initialSeconds - takeSeconds);
+            }
+        } else {
+            this.seconds = Math.max(this.minValue, this.seconds - takeSeconds);
         }
     }
 
@@ -405,15 +504,15 @@ public class Timer implements Runnable {
     }
 
     public void resume() {
-        if (this.task == null) startTask(this.seconds);
+        if (this.task == null) startTask();
     }
 
     public void run() {
-        this.seconds--;
+        this.seconds += this.mode.getDirection();
         for (Player player : Bukkit.getOnlinePlayers())
             this.bossbar.addPlayer(player);
 
-        if (this.seconds <= 0) {
+        if (this.mode.shouldFinish(this.seconds, this.targetSeconds)) {
             if (this.task != null) {
                 if (ServerCompatibility.isFolia()) { // Folia
                     try {

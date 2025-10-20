@@ -1,0 +1,15 @@
+name: VCTStopwatchAddon
+version: 0.1.0-SNAPSHOT
+main: voiidstudios.vct.addons.stopwatch.StopwatchAddonPlugin
+author: Voiid Studios
+api-version: "1.20"
+depend: [VoiidCountdownTimer]
+commands:
+  vctstopwatch:
+    description: Controls the stopwatch add-on for Voiid Countdown Timer
+    usage: /<command> <start|pause|resume|stop>
+    permission: vct.stopwatch.use
+permissions:
+  vct.stopwatch.use:
+    description: Allows usage of the stopwatch add-on commands
+    default: op

@@ -75,6 +75,20 @@ Voiid Countdown Timer includes:
 - To see all available commands, use `/vct help`.
 - In `config.yml`, you can customize various timer options; all of them are detailed in the [official documentation.](https://vctdocs.mintlify.app/)
 
+## 🔌 Add-on system (prototype)
+Voiid Countdown Timer now exposes a lightweight registration API so that extra plugins can plug into the main timer features.
+
+- Third-party plugins can declare a dependency on `VoiidCountdownTimer`, implement the `voiidstudios.vct.api.addon.VCTAddon` interface and register themselves through `VCTAPI.registerAddon("your-id", addon, this)` inside `onEnable`.
+- Add-ons receive callbacks when they are registered/unregistered and can orchestrate timers through the existing `VCTActions` helpers.
+
+### ⏱️ Stopwatch reference implementation
+This repository now includes a sketch add-on (`voiidcountdown-addon-stopwatch`) showcasing the new API. It introduces `/vctstopwatch` commands that create and control count-up timers (with optional targets) via the core plugin.
+
+- `/vctstopwatch start [hh:mm:ss] [timer-id]` — starts an ascending stopwatch, optionally ending at the provided target and/or using a custom timer profile.
+- `/vctstopwatch pause`, `/vctstopwatch resume`, `/vctstopwatch stop` — control the active stopwatch.
+
+The add-on doubles as documentation for developers that want to ship their own integrations.
+
 ## [📚 Documentation](https://vctdocs.mintlify.app/)
 
 <img src="https://github.com/user-attachments/assets/19d69e0d-1e31-450f-aa13-835cc22c93de" height="120px"/>
