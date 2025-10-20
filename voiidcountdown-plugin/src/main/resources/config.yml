@@ -1,5 +1,7 @@
 Config:
-  # The plugin will send an update notification message when it finds an available update.
+  # The plugin will attempt to auto-update when it finds a new version.
+  auto_update: false
+  # The plugin will send an update notification when it finds a new version if auto-update is disabled.
   update_notification: true
   # When the timer ends, how many ticks should wait to hide the boss bar (1 second = 20 ticks)
   ticks_hide_after_ending: 60

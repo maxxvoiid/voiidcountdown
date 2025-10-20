@@ -1,6 +1,7 @@
 package voiidstudios.vct.managers;
 
 import voiidstudios.vct.VoiidCountdownTimer;
+import voiidstudios.vct.utils.ServerCompatibility;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -9,6 +10,8 @@ import java.text.DecimalFormatSymbols;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.bukkit.Bukkit;
 
 public class DynamicsManager {
     public static final String DYNAMIC_KEY = "dynamic";
@@ -33,6 +36,8 @@ public class DynamicsManager {
 
     private final VoiidCountdownTimer plugin;
 
+    private Object task;
+
     public DynamicsManager(VoiidCountdownTimer plugin) {
         this.plugin = plugin;
         DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.US);
@@ -44,14 +49,12 @@ public class DynamicsManager {
     }
 
     private void startIndexTask() {
-        plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, () -> {
+        Runnable runnable = () -> {
             mmIndex -= 1;
             if (mmIndex == 1) mmIndex = maxIndex;
 
             miniGradientIndexBD = miniGradientIndexBD.add(stepBD);
-            if (miniGradientIndexBD.compareTo(one) > 0) {
-                miniGradientIndexBD = new BigDecimal("-1.0");
-            }
+            if (miniGradientIndexBD.compareTo(one) > 0) miniGradientIndexBD = new BigDecimal("-1.0");
 
             if (miniGradientIncL) {
                 miniGradientIndexBDL = miniGradientIndexBDL.add(stepBD);
@@ -68,7 +71,17 @@ public class DynamicsManager {
             }
 
             updateFormattedDynamicsValues();
-        }, 0, 1);
+        };
+
+        if (ServerCompatibility.isFolia()) { // Folia
+            this.task = Bukkit.getGlobalRegionScheduler().runAtFixedRate(
+                plugin,
+                scheduledTask -> runnable.run(),
+                1L, 1L
+            );
+        } else {
+            this.task = plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, runnable, 0L, 1L);
+        }
     }
 
     private void updateFormattedDynamicsValues() {

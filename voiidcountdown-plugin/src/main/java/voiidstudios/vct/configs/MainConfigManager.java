@@ -13,6 +13,7 @@ import voiidstudios.vct.utils.Formatter;
 public class MainConfigManager {
     private CustomConfig configFile;
 
+    private boolean auto_update;
     private boolean update_notification;
     private int ticks_hide_after_ending;
     private String text_format;
@@ -28,6 +29,7 @@ public class MainConfigManager {
     public void configure(){
         FileConfiguration config = configFile.getConfig();
 
+        auto_update = config.getBoolean("Config.auto_update");
         update_notification = config.getBoolean("Config.update_notification");
         ticks_hide_after_ending = config.getInt("Config.ticks_hide_after_ending");
         text_format = config.getString("Config.text_format");
@@ -56,7 +58,11 @@ public class MainConfigManager {
         Path pathConfig = Paths.get(configFile.getRoute());
         try {
             String text = new String(Files.readAllBytes(pathConfig));
-
+            
+            if(!text.contains("auto_update:")){
+                getConfig().set("Config.auto_update", false);
+                saveConfig();
+            }
             if(!text.contains("update_notification:")){
                 getConfig().set("Config.update_notification", true);
                 saveConfig();
@@ -207,6 +213,10 @@ public class MainConfigManager {
         } catch(IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public boolean isAuto_update() {
+        return auto_update;
     }
 
     public boolean isUpdate_notification() {

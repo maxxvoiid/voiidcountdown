@@ -7,15 +7,18 @@ import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
+
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import voiidstudios.vct.VoiidCountdownTimer;
 import voiidstudios.vct.managers.TimerManager;
 import voiidstudios.vct.utils.Formatter;
+import voiidstudios.vct.utils.ServerCompatibility;
 import voiidstudios.vct.configs.model.TimerConfig;
 
 public class Timer implements Runnable {
     private int seconds;
     private final BossBar bossbar;
-    private BukkitTask task;
+    private Object task;
     private boolean hasSound;
     private String soundFinalName;
     public float soundVolume;
@@ -145,60 +148,75 @@ public class Timer implements Runnable {
 
     private void startTask(int seconds) {
         final int increment = -1;
-        this.task = Bukkit.getScheduler().runTaskTimer(
-                VoiidCountdownTimer.getInstance(),
-                new Runnable() {
-                    private int tickCounter = 0;
-                    private int refreshCounter = 0;
 
-                    public void run() {
-                        tickCounter++;
-                        refreshCounter++;
+        Runnable taskRunnable = new Runnable() {
+            private int tickCounter = 0;
+            private int refreshCounter = 0;
 
-                        if (tickCounter >= 20) {
-                            tickCounter = 0;
-                            Timer.this.seconds += increment;
+            @Override
+            public void run() {
+                tickCounter++;
+                refreshCounter++;
 
-                            for (Player player : Bukkit.getOnlinePlayers()) {
-                                Timer.this.bossbar.addPlayer(player);
+                if (tickCounter >= 20) {
+                    tickCounter = 0;
+                    Timer.this.seconds += increment;
 
-                                if (Timer.this.hasSound && Timer.this.soundFinalName != null) {
-                                    playSound(player, soundFinalName + ";" + soundVolume + ";" + soundPitch);
-                                }
-                            }
+                    for (Player player : Bukkit.getOnlinePlayers()) {
+                        Timer.this.bossbar.addPlayer(player);
 
-                            Bukkit.getPluginManager().callEvent(new VCTEvent(Timer.this, VCTEvent.VCTEventType.CHANGE, null));
-                        }
-
-                        if (refreshCounter >= Timer.this.refreshInterval) {
-                            refreshCounter = 0;
-
-                            String rawText = Timer.this.getTimertextFormated();
-
-                            String phasesText = VoiidCountdownTimer.getPhasesManager().formatPhases(rawText);
-
-                            updateBossBarTitle(phasesText);
-
-                            double progress = (double) Timer.this.seconds / (double) Timer.this.initialSeconds;
-                            progress = Math.max(0.0, Math.min(1.0, progress));
-                            Timer.this.bossbar.setProgress(progress);
-                        }
-
-                        if (Timer.this.seconds <= 0) {
-                            if (Timer.this.task != null)
-                                Timer.this.task.cancel();
-
-                                Bukkit.getPluginManager().callEvent(new VCTEvent(Timer.this, VCTEvent.VCTEventType.FINISH, null));
-                            
-                                Bukkit.getScheduler().runTaskLater(VoiidCountdownTimer.getInstance(), () -> {
-                                    if (Timer.this.bossbar != null)
-                                        Timer.this.bossbar.removeAll();
-                                }, VoiidCountdownTimer.getConfigsManager().getMainConfigManager().getTicks_hide_after_ending());
+                        if (Timer.this.hasSound && Timer.this.soundFinalName != null) {
+                            playSound(player, soundFinalName + ";" + soundVolume + ";" + soundPitch);
                         }
                     }
-                },
+
+                    Bukkit.getPluginManager().callEvent(new VCTEvent(Timer.this, VCTEvent.VCTEventType.CHANGE, null));
+                }
+
+                if (refreshCounter >= Timer.this.refreshInterval) {
+                    refreshCounter = 0;
+
+                    String rawText = Timer.this.getTimertextFormated();
+                    String phasesText = VoiidCountdownTimer.getPhasesManager().formatPhases(rawText);
+                    updateBossBarTitle(phasesText);
+
+                    double progress = (double) Timer.this.seconds / (double) Timer.this.initialSeconds;
+                    progress = Math.max(0.0, Math.min(1.0, progress));
+                    Timer.this.bossbar.setProgress(progress);
+                }
+
+                if (Timer.this.seconds <= 0) {
+                    stop();
+                    Bukkit.getPluginManager().callEvent(new VCTEvent(Timer.this, VCTEvent.VCTEventType.FINISH, null));
+                    if (ServerCompatibility.isFolia()) {
+                        Bukkit.getGlobalRegionScheduler().runDelayed(VoiidCountdownTimer.getInstance(), scheduledTask ->
+                            Timer.this.bossbar.removeAll(),
+                            VoiidCountdownTimer.getConfigsManager().getMainConfigManager().getTicks_hide_after_ending()
+                        );
+                    } else {
+                        Bukkit.getScheduler().runTaskLater(VoiidCountdownTimer.getInstance(), () ->
+                            Timer.this.bossbar.removeAll(),
+                            VoiidCountdownTimer.getConfigsManager().getMainConfigManager().getTicks_hide_after_ending()
+                        );
+                    }
+                }
+            }
+        };
+
+        if (ServerCompatibility.isFolia()) { // folia
+            Object scheduledTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(
+                VoiidCountdownTimer.getInstance(),
+                ts -> taskRunnable.run(),
                 1L, 1L
-        );
+            );
+            this.task = scheduledTask;
+        } else {
+            this.task = Bukkit.getScheduler().runTaskTimer(
+                VoiidCountdownTimer.getInstance(),
+                taskRunnable,
+                1L, 1L
+            );
+        }
     }
 
     public static void refreshTimerText() {
@@ -330,13 +348,22 @@ public class Timer implements Runnable {
     }
 
     public void start() {
+        if (task != null) {
+            stop();
+        }
         startTask(this.seconds);
     }
 
     public void stop() {
-        if (this.task != null){
-            Bukkit.getPluginManager().callEvent(new VCTEvent(Timer.this, VCTEvent.VCTEventType.STOP, null));
-            this.task.cancel();
+        if (task != null) {
+            try {
+                if (ServerCompatibility.isFolia()) {
+                    ((ScheduledTask) task).cancel();
+                } else {
+                    ((BukkitTask) task).cancel();
+                }
+            } catch (Exception ignored) {}
+            task = null;
         }
 
         if (this.bossbar != null)
@@ -374,24 +401,29 @@ public class Timer implements Runnable {
     }
 
     public void pause() {
-        if (this.task != null) {
-            this.task.cancel();
-            this.task = null;
-        }
+        stop();
     }
 
     public void resume() {
-        if (this.task == null)
-            startTask(this.seconds);
+        if (this.task == null) startTask(this.seconds);
     }
 
     public void run() {
         this.seconds--;
         for (Player player : Bukkit.getOnlinePlayers())
             this.bossbar.addPlayer(player);
-        if (this.seconds == 0) {
-            if (this.task != null)
-                Bukkit.getScheduler().cancelTask(this.task.getTaskId());
+
+        if (this.seconds <= 0) {
+            if (this.task != null) {
+                if (ServerCompatibility.isFolia()) { // Folia
+                    try {
+                        this.task.getClass().getMethod("cancel").invoke(this.task);
+                    } catch (Exception ignored) {}
+                } else { // Bukkit
+                    Bukkit.getScheduler().cancelTask(((BukkitTask) this.task).getTaskId());
+                }
+            }
+
             this.bossbar.removeAll();
             TimerManager.getInstance().removeTimer();
         }

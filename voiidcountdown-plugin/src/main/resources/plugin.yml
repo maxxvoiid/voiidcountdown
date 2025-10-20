@@ -1,10 +1,11 @@
 main: voiidstudios.vct.VoiidCountdownTimer
 name: VoiidCountdownTimer
-version: 2.0.2
-codename: astro
-authors: [Voiid Studios]
+version: 2.1.0-a2
+codename: nobelium
+authors: ["Voiid Studios"]
 api-version: 1.13
-softdepend: [PlaceholderAPI]
+softdepend: ["PlaceholderAPI"]
+folia-supported: true
 
 commands:
   voiidcountdowntimer:

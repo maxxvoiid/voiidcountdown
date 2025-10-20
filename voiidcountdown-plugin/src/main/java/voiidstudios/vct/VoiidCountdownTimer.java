@@ -4,16 +4,18 @@ import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import voiidstudios.vct.api.Metrics;
 import voiidstudios.vct.api.PAPIExpansion;
+import voiidstudios.vct.api.update.UpdateChecker;
+import voiidstudios.vct.api.update.UpdateCheckerResult;
+import voiidstudios.vct.api.update.UpdateDownloaderGithub;
 import voiidstudios.vct.commands.MainCommand;
 import voiidstudios.vct.configs.ConfigsManager;
 import voiidstudios.vct.listeners.PlayerListener;
 import voiidstudios.vct.managers.DependencyManager;
-import voiidstudios.vct.api.UpdateCheckerResult;
 import voiidstudios.vct.managers.DynamicsManager;
 import voiidstudios.vct.managers.MessagesManager;
 import voiidstudios.vct.managers.TimerStateManager;
+import voiidstudios.vct.utils.ServerCompatibility;
 import voiidstudios.vct.utils.ServerVersion;
-import voiidstudios.vct.utils.UpdateChecker;
 
 public final class VoiidCountdownTimer extends JavaPlugin {
     public static String prefix = "&5[&dVCT&5] ";
@@ -57,9 +59,7 @@ public final class VoiidCountdownTimer extends JavaPlugin {
         dynamicsManager = new DynamicsManager(this);
         updateChecker = new UpdateChecker(version);
 
-        if (configsManager.getMainConfigManager().isUpdate_notification()) {
-            updateMessage(updateChecker.check());
-        }
+        checkUpdates(updateChecker.check());
 
         timerStateManager = new TimerStateManager(this);
         timerStateManager.loadState();
@@ -126,15 +126,32 @@ public final class VoiidCountdownTimer extends JavaPlugin {
         return updateChecker;
     }
 
-    public void updateMessage(UpdateCheckerResult result){
+    public void checkUpdates(UpdateCheckerResult result){
         if(!result.isError()){
             String latestVersion = result.getLatestVersion();
-            if(latestVersion != null){
-                Bukkit.getConsoleSender().sendMessage(MessagesManager.getColoredMessage("&aAn update for Voiid Countdown Timer &e("+latestVersion+") &ais available."));
-                Bukkit.getConsoleSender().sendMessage(MessagesManager.getColoredMessage("&aYou can download it at: &fhttps://modrinth.com/datapack/voiid-countdown-timer"));
+
+            if (configsManager.getMainConfigManager().isUpdate_notification() && !configsManager.getMainConfigManager().isAuto_update()) sendConsoleUpdateMessage(latestVersion);
+
+            if (configsManager.getMainConfigManager().isAuto_update()) {
+                if (latestVersion != null && !latestVersion.equalsIgnoreCase(version)) {
+                    Bukkit.getConsoleSender().sendMessage(MessagesManager.getColoredMessage("&bAn stable update for Voiid Countdown Timer &e("+latestVersion+") &bis available. Downloading shortly..."));
+
+                    if (ServerCompatibility.isFolia()) {
+                        Bukkit.getGlobalRegionScheduler().runDelayed(this, scheduledTask -> UpdateDownloaderGithub.downloadUpdate(), 2L);
+                    } else {
+                        Bukkit.getScheduler().runTaskAsynchronously(this, () -> UpdateDownloaderGithub.downloadUpdate());
+                    }
+                }
             }
         }else{
-            Bukkit.getConsoleSender().sendMessage(MessagesManager.getColoredMessage(prefix+"&cAn error occurred while checking for updates."));
+            if (configsManager.getMainConfigManager().isUpdate_notification() && !configsManager.getMainConfigManager().isAuto_update()) Bukkit.getConsoleSender().sendMessage(MessagesManager.getColoredMessage(prefix+"&cAn error occurred while checking for updates."));
+        }
+    }
+
+    public void sendConsoleUpdateMessage(String latestVersion){
+        if(latestVersion != null){
+            Bukkit.getConsoleSender().sendMessage(MessagesManager.getColoredMessage("&bAn stable update for Voiid Countdown Timer &e("+latestVersion+") &bis available."));
+            Bukkit.getConsoleSender().sendMessage(MessagesManager.getColoredMessage("&bYou can download it at: &fhttps://modrinth.com/datapack/voiid-countdown-timer"));
         }
     }
 
