@@ -11,51 +11,272 @@ import voiidstudios.vct.api.Timer;
 import voiidstudios.vct.api.VCTActions;
 import voiidstudios.vct.api.VCTEvent;
 import voiidstudios.vct.configs.model.TimerConfig;
+import voiidstudios.vct.expansions.ExpansionManager;
+import voiidstudios.vct.expansions.ExpansionMetadata;
 import voiidstudios.vct.managers.MessagesManager;
 import voiidstudios.vct.managers.TimerManager;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class MainCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender sender, @NotNull Command command, @NotNull String alias, String[] args) {
         MessagesManager msgManager = VoiidCountdownTimer.getMessagesManager();
+        ExpansionManager expansionManager = VoiidCountdownTimer.getExpansionManager();
 
-        if(sender.isOp() || sender.hasPermission("voiidcountdowntimer.admin")) {
-            if(args.length >= 1){
-                if(args[0].equalsIgnoreCase("help")){
-                    help(sender);
-                }else if (args[0].equalsIgnoreCase("reload")){
-                    reload(sender, msgManager);
-                }else if (args[0].equalsIgnoreCase("set")){
-                    set(sender, args, msgManager);
-                }else if (args[0].equalsIgnoreCase("pause")){
-                    pause(sender, msgManager);
-                }else if (args[0].equalsIgnoreCase("resume")){
-                    resume(sender, msgManager);
-                }else if (args[0].equalsIgnoreCase("stop")){
-                    stop(sender);
-                }else if (args[0].equalsIgnoreCase("modify")){
-                    modify(sender, args, msgManager);
-                }else{
-                    help(sender);
-                }
-            }else{
+        boolean hasAdmin = sender.isOp() || sender.hasPermission("voiidcountdowntimer.admin");
+
+        if (hasAdmin && args.length >= 1) {
+            if(args[0].equalsIgnoreCase("help")){
                 help(sender);
+                return true;
+            }else if (args[0].equalsIgnoreCase("reload")){
+                reload(sender, args, msgManager, expansionManager);
+                return true;
+            }else if (args[0].equalsIgnoreCase("expansion")){
+                handleExpansionCommand(sender, args, msgManager, expansionManager);
+                return true;
+            }else if (args[0].equalsIgnoreCase("set")){
+                set(sender, args, msgManager);
+                return true;
+            }else if (args[0].equalsIgnoreCase("pause")){
+                pause(sender, msgManager);
+                return true;
+            }else if (args[0].equalsIgnoreCase("resume")){
+                resume(sender, msgManager);
+                return true;
+            }else if (args[0].equalsIgnoreCase("stop")){
+                stop(sender);
+                return true;
+            }else if (args[0].equalsIgnoreCase("modify")){
+                modify(sender, args, msgManager);
+                return true;
             }
-        }else{
-            msgManager.sendConfigMessage(sender, "Messages.commandNoPermissions", true, null);
         }
+
+        if (expansionManager != null && expansionManager.executeCommand(sender, args)) {
+            return true;
+        }
+
+        if (!hasAdmin) {
+            msgManager.sendConfigMessage(sender, "Messages.commandNoPermissions", true, null);
+            return true;
+        }
+
+        help(sender);
 
         return true;
     }
 
-    public void reload(CommandSender sender, MessagesManager msgManager){
-        VoiidCountdownTimer.getConfigsManager().reload();
-        msgManager.sendConfigMessage(sender, "Messages.commandReload", true, null);
-        Timer.refreshTimerText();
+    public void reload(CommandSender sender, String[] args, MessagesManager msgManager, ExpansionManager expansionManager){
+        if (args.length < 2) {
+            msgManager.sendConfigMessage(sender, "Messages.commandReloadUsage", true, null);
+            return;
+        }
+
+        String target = args[1].toLowerCase(Locale.ROOT);
+        switch (target) {
+            case "config":
+                VoiidCountdownTimer.getConfigsManager().reload();
+                msgManager.sendConfigMessage(sender, "Messages.commandReload", true, null);
+                Timer.refreshTimerText();
+                break;
+            case "expansion":
+                if (expansionManager == null) {
+                    msgManager.sendConfigMessage(sender, "Messages.commandExpansionUnavailable", true, null);
+                    return;
+                }
+
+                if (args.length < 3) {
+                    msgManager.sendConfigMessage(sender, "Messages.commandReloadExpansionUsage", true, null);
+                    return;
+                }
+
+                String expansionName = args[2];
+                ExpansionManager.ExpansionActionResult result = expansionManager.reloadExpansion(expansionName);
+                Map<String, String> repl = new HashMap<>();
+                ExpansionMetadata metadata = expansionManager.getExpansionMetadata(expansionName);
+                String displayName = metadata != null ? metadata.getName() : expansionName;
+                repl.put("%EXPANSION%", displayName);
+
+                if (result == ExpansionManager.ExpansionActionResult.SUCCESS) {
+                    msgManager.sendConfigMessage(sender, "Messages.commandExpansionReloadSuccess", true, repl);
+                } else if (result == ExpansionManager.ExpansionActionResult.NOT_FOUND) {
+                    msgManager.sendConfigMessage(sender, "Messages.commandExpansionNotFound", true, repl);
+                } else {
+                    msgManager.sendConfigMessage(sender, "Messages.commandExpansionReloadFailed", true, repl);
+                }
+                break;
+            case "allexpansions":
+                if (expansionManager == null) {
+                    msgManager.sendConfigMessage(sender, "Messages.commandExpansionUnavailable", true, null);
+                    return;
+                }
+
+                int reloaded = expansionManager.reloadAllExpansions();
+                Map<String, String> allRepl = new HashMap<>();
+                allRepl.put("%COUNT%", String.valueOf(reloaded));
+                if (reloaded > 0) {
+                    msgManager.sendConfigMessage(sender, "Messages.commandExpansionReloadAllSuccess", true, allRepl);
+                } else {
+                    msgManager.sendConfigMessage(sender, "Messages.commandExpansionReloadAllFailed", true, null);
+                }
+                break;
+            default:
+                msgManager.sendConfigMessage(sender, "Messages.commandReloadUsage", true, null);
+                break;
+        }
+    }
+
+    private void handleExpansionCommand(CommandSender sender, String[] args, MessagesManager msgManager, ExpansionManager expansionManager) {
+        if (expansionManager == null) {
+            msgManager.sendConfigMessage(sender, "Messages.commandExpansionUnavailable", true, null);
+            return;
+        }
+
+        if (args.length < 2) {
+            msgManager.sendConfigMessage(sender, "Messages.commandExpansionUsage", true, null);
+            return;
+        }
+
+        String sub = args[1].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "info":
+                if (args.length < 3) {
+                    msgManager.sendConfigMessage(sender, "Messages.commandExpansionInfoUsage", true, null);
+                    return;
+                }
+
+                String infoName = args[2];
+                ExpansionMetadata infoMetadata = expansionManager.getExpansionMetadata(infoName);
+                if (infoMetadata == null) {
+                    Map<String, String> repl = new HashMap<>();
+                    repl.put("%EXPANSION%", infoName);
+                    msgManager.sendConfigMessage(sender, "Messages.commandExpansionNotFound", true, repl);
+                    return;
+                }
+
+                boolean enabled = expansionManager.isExpansionLoaded(infoMetadata.getName());
+                Map<String, String> headerRepl = new HashMap<>();
+                headerRepl.put("%EXPANSION%", infoMetadata.getName());
+                headerRepl.put("%STATUS%", enabled ? "&aEnabled" : "&cDisabled");
+                msgManager.sendConfigMessage(sender, "Messages.commandExpansionInfoHeader", true, headerRepl);
+
+                Map<String, String> versionRepl = new HashMap<>();
+                versionRepl.put("%VERSION%", infoMetadata.getVersion());
+                msgManager.sendConfigMessage(sender, "Messages.commandExpansionInfoVersion", false, versionRepl);
+
+                String authors = String.join(", ", infoMetadata.getAuthors());
+                if (authors.trim().isEmpty()) {
+                    authors = "Unknown";
+                }
+                Map<String, String> authorsRepl = new HashMap<>();
+                authorsRepl.put("%AUTHORS%", authors);
+                msgManager.sendConfigMessage(sender, "Messages.commandExpansionInfoAuthors", false, authorsRepl);
+
+                String description = infoMetadata.getDescription() == null ? "" : infoMetadata.getDescription().trim();
+                if (description.isEmpty()) {
+                    msgManager.sendConfigMessage(sender, "Messages.commandExpansionInfoNoDescription", false, null);
+                } else {
+                    Map<String, String> descriptionRepl = new HashMap<>();
+                    descriptionRepl.put("%DESCRIPTION%", description);
+                    msgManager.sendConfigMessage(sender, "Messages.commandExpansionInfoDescription", false, descriptionRepl);
+                }
+                break;
+            case "enable":
+                if (args.length < 3) {
+                    msgManager.sendConfigMessage(sender, "Messages.commandExpansionEnableUsage", true, null);
+                    return;
+                }
+
+                handleExpansionStateChange(sender, expansionManager, expansionManager.enableExpansion(args[2]), args[2], msgManager,
+                        "Messages.commandExpansionEnableSuccess",
+                        "Messages.commandExpansionEnableAlready",
+                        "Messages.commandExpansionNotFound",
+                        "Messages.commandExpansionEnableFailed");
+                break;
+            case "disable":
+                if (args.length < 3) {
+                    msgManager.sendConfigMessage(sender, "Messages.commandExpansionDisableUsage", true, null);
+                    return;
+                }
+
+                handleExpansionStateChange(sender, expansionManager, expansionManager.disableExpansion(args[2]), args[2], msgManager,
+                        "Messages.commandExpansionDisableSuccess",
+                        "Messages.commandExpansionDisableNotLoaded",
+                        "Messages.commandExpansionNotFound",
+                        "Messages.commandExpansionDisableFailed");
+                break;
+            case "reload":
+                if (args.length < 3) {
+                    msgManager.sendConfigMessage(sender, "Messages.commandExpansionReloadUsage", true, null);
+                    return;
+                }
+
+                handleExpansionStateChange(sender, expansionManager, expansionManager.reloadExpansion(args[2]), args[2], msgManager,
+                        "Messages.commandExpansionReloadSuccess",
+                        null,
+                        "Messages.commandExpansionNotFound",
+                        "Messages.commandExpansionReloadFailed");
+                break;
+            case "reloadall":
+                int reloaded = expansionManager.reloadAllExpansions();
+                Map<String, String> repl = new HashMap<>();
+                repl.put("%COUNT%", String.valueOf(reloaded));
+                if (reloaded > 0) {
+                    msgManager.sendConfigMessage(sender, "Messages.commandExpansionReloadAllSuccess", true, repl);
+                } else {
+                    msgManager.sendConfigMessage(sender, "Messages.commandExpansionReloadAllFailed", true, null);
+                }
+                break;
+            default:
+                msgManager.sendConfigMessage(sender, "Messages.commandExpansionUsage", true, null);
+                break;
+        }
+    }
+
+    private void handleExpansionStateChange(CommandSender sender,
+                                            ExpansionManager expansionManager,
+                                            ExpansionManager.ExpansionActionResult result,
+                                            String inputName,
+                                            MessagesManager msgManager,
+                                            String successKey,
+                                            String alreadyKey,
+                                            String notFoundKey,
+                                            String failedKey) {
+        ExpansionMetadata metadata = expansionManager == null ? null : expansionManager.getExpansionMetadata(inputName);
+        String displayName = metadata != null ? metadata.getName() : inputName;
+        Map<String, String> repl = new HashMap<>();
+        repl.put("%EXPANSION%", displayName);
+
+        switch (result) {
+            case SUCCESS:
+                msgManager.sendConfigMessage(sender, successKey, true, repl);
+                break;
+            case ALREADY_ENABLED:
+                if (alreadyKey != null) {
+                    msgManager.sendConfigMessage(sender, alreadyKey, true, repl);
+                } else {
+                    msgManager.sendConfigMessage(sender, successKey, true, repl);
+                }
+                break;
+            case ALREADY_DISABLED:
+                if (alreadyKey != null) {
+                    msgManager.sendConfigMessage(sender, alreadyKey, true, repl);
+                } else {
+                    msgManager.sendConfigMessage(sender, failedKey, true, repl);
+                }
+                break;
+            case NOT_FOUND:
+                msgManager.sendConfigMessage(sender, notFoundKey, true, repl);
+                break;
+            default:
+                msgManager.sendConfigMessage(sender, failedKey, true, repl);
+                break;
+        }
     }
 
     public void set(CommandSender sender, String[] args, MessagesManager msgManager){
@@ -445,30 +666,51 @@ public class MainCommand implements CommandExecutor, TabCompleter {
     public void help(CommandSender sender){
         sender.sendMessage(MessagesManager.getColoredMessage(VoiidCountdownTimer.prefix +"&7Running &dVoiid Countdown Timer &ev"+VoiidCountdownTimer.getInstance().getDescription().getVersion()));
         sender.sendMessage(MessagesManager.getColoredMessage("&5> &6/vct help &7- Shows this message."));
-        sender.sendMessage(MessagesManager.getColoredMessage("&5> &6/vct reload &7- Reloads the config."));
+        sender.sendMessage(MessagesManager.getColoredMessage("&5> &6/vct reload &e<config|expansion|allexpansions> &7- Reload plugin resources."));
         sender.sendMessage(MessagesManager.getColoredMessage("&5> &6/vct set &e<HH:MM:SS> &7- Set the timer."));
         sender.sendMessage(MessagesManager.getColoredMessage("&5> &6/vct pause &7- Pause the timer."));
         sender.sendMessage(MessagesManager.getColoredMessage("&5> &6/vct resume &7- Resume the timer."));
         sender.sendMessage(MessagesManager.getColoredMessage("&5> &6/vct stop &7- Stop the timer."));
         sender.sendMessage(MessagesManager.getColoredMessage("&5> &6/vct modify &e<modifier> &7- Modify the timer."));
+        sender.sendMessage(MessagesManager.getColoredMessage("&5> &6/vct expansion &e<info|enable|disable|reload|reloadall> &7- Manage expansions."));
+
+        ExpansionManager expansionManager = VoiidCountdownTimer.getExpansionManager();
+        if (expansionManager != null) {
+            for (String line : expansionManager.getHelpLines()) {
+                sender.sendMessage(MessagesManager.getColoredMessage(line));
+            }
+        }
     }
 
     public List<String> onTabComplete(CommandSender sender, @NotNull Command command, @NotNull String label, String[] args){
-        if(sender.isOp() || sender.hasPermission("voiidcountdowntimer.admin")){
-            if(args.length == 1){
-                List<String> completions = new ArrayList<String>();
+        ExpansionManager expansionManager = VoiidCountdownTimer.getExpansionManager();
+        boolean hasAdmin = sender.isOp() || sender.hasPermission("voiidcountdowntimer.admin");
+
+        if (args.length == 1) {
+            java.util.Set<String> completions = new java.util.LinkedHashSet<>();
+
+            if (hasAdmin) {
                 List<String> commands = new ArrayList<String>();
                 commands.add("help");commands.add("reload");
                 commands.add("set");commands.add("pause");
                 commands.add("resume");commands.add("stop");
-                commands.add("modify");
+                commands.add("modify");commands.add("expansion");
                 for(String c : commands) {
                     if(args[0].isEmpty() || c.startsWith(args[0].toLowerCase())) {
                         completions.add(c);
                     }
                 }
-                return completions;
-            } else if (args.length == 2){
+            }
+
+            if (expansionManager != null) {
+                completions.addAll(expansionManager.getRootSuggestions(args[0]));
+            }
+
+            return completions.isEmpty() ? null : new ArrayList<>(completions);
+        }
+
+        if (hasAdmin) {
+            if (args.length == 2){
                 List<String> subcompletions = new ArrayList<String>();
                 List<String> subcommands = new ArrayList<String>();
 
@@ -480,6 +722,12 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                     subcommands.add("sound_pitch");subcommands.add("text");
                 }else if(args[0].equalsIgnoreCase("set")){
                     subcommands.add("<HH:MM:SS>");
+                }else if(args[0].equalsIgnoreCase("reload")){
+                    subcommands.add("config");subcommands.add("expansion");subcommands.add("allexpansions");
+                }else if(args[0].equalsIgnoreCase("expansion")) {
+                    subcommands.add("info");subcommands.add("enable");
+                    subcommands.add("disable");subcommands.add("reload");
+                    subcommands.add("reloadall");
                 }
 
                 for(String c : subcommands) {
@@ -487,7 +735,7 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                         subcompletions.add(c);
                     }
                 }
-                return subcompletions;
+                if(!subcompletions.isEmpty()) return subcompletions;
             } else if (args.length == 3){
                 List<String> subcompletions = new ArrayList<String>();
                 List<String> subcommands = new ArrayList<String>();
@@ -514,7 +762,25 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                         subcommands.add("<HH:MM:SS>");
                     }
                 } else if(args[0].equalsIgnoreCase("set")){
-                    return getTimersCompletions(args, 2, true);
+                    List<String> timers = getTimersCompletions(args, 2, true);
+                    if (timers != null) {
+                        return timers;
+                    }
+                } else if(args[0].equalsIgnoreCase("reload") && args[1].equalsIgnoreCase("expansion")) {
+                    if (expansionManager != null) {
+                        List<String> names = expansionManager.getKnownExpansionNames();
+                        return filterByPrefix(names, args[2]);
+                    }
+                } else if(args[0].equalsIgnoreCase("expansion")) {
+                    if (expansionManager != null) {
+                        if (args[1].equalsIgnoreCase("info") || args[1].equalsIgnoreCase("enable") || args[1].equalsIgnoreCase("reload")) {
+                            List<String> names = expansionManager.getKnownExpansionNames();
+                            return filterByPrefix(names, args[2]);
+                        } else if (args[1].equalsIgnoreCase("disable")) {
+                            List<String> names = expansionManager.getLoadedExpansionNames();
+                            return filterByPrefix(names, args[2]);
+                        }
+                    }
                 }
 
                 for(String c : subcommands) {
@@ -522,7 +788,14 @@ public class MainCommand implements CommandExecutor, TabCompleter {
                         subcompletions.add(c);
                     }
                 }
-                return subcompletions;
+                if(!subcompletions.isEmpty()) return subcompletions;
+            }
+        }
+
+        if (expansionManager != null) {
+            List<String> expansionCompletions = expansionManager.getTabCompletions(sender, args);
+            if (expansionCompletions != null && !expansionCompletions.isEmpty()) {
+                return expansionCompletions;
             }
         }
 
@@ -550,5 +823,21 @@ public class MainCommand implements CommandExecutor, TabCompleter {
         }
 
         return completions.isEmpty() ? null : completions;
+    }
+
+    private List<String> filterByPrefix(List<String> values, String prefix) {
+        if (values == null || values.isEmpty()) {
+            return null;
+        }
+
+        List<String> filtered = new ArrayList<>();
+        String lower = prefix == null ? "" : prefix.toLowerCase(Locale.ROOT);
+        for (String value : values) {
+            if (lower.isEmpty() || value.toLowerCase(Locale.ROOT).startsWith(lower)) {
+                filtered.add(value);
+            }
+        }
+
+        return filtered.isEmpty() ? null : filtered;
     }
 }

@@ -1,0 +1,135 @@
+---
+title: "Expansiones"
+description: "Añade nuevas funciones a VCT mediante scripts JavaScript que se cargan como expansiones."
+---
+
+## 🧩 ¿Qué son las expansiones?
+
+Las expansiones son complementos opcionales que amplían las funciones del plugin sin modificar el núcleo de **Voiid Countdown Timer**. Cada expansión vive en su propia carpeta dentro de `plugins/VoiidCountdownTimer/expansions` y se compone de dos elementos:
+
+1. Un archivo de metadatos `expansion.yml` que describe la expansión.
+2. Un script principal (por defecto `main.js`) que se ejecuta con el motor de JavaScript incluido en el plugin.
+
+El plugin seguirá funcionando aunque no exista ninguna expansión instalada, por lo que puedes utilizar esta característica solo cuando lo necesites.
+
+## 📁 Estructura de carpetas
+
+```
+plugins/
+└── VoiidCountdownTimer/
+    └── expansions/
+        └── MiExpansion/
+            ├── expansion.yml
+            └── main.js
+```
+
+## 📝 Archivo `expansion.yml`
+
+El archivo de metadatos define la información básica de la expansión y el nombre del script principal que debe cargarse.
+
+```yml
+name: Stopwatch
+main: main.js
+version: 1.0.0
+authors:
+  - VoiidCountdownTimer
+  - Community
+description: Cronómetro básico controlado por comandos para Voiid Countdown Timer.
+```
+
+> **Importante:** El campo `main` debe apuntar al script JavaScript relativo a la carpeta de la expansión.
+
+## 🧠 API del script
+
+Cuando el script se carga, VCT invoca (si existen) las funciones `onLoad`, `onEnable` y `onDisable` del archivo `main.js`.
+
+Dentro de estas funciones recibirás un objeto `context` con utilidades pensadas para las expansiones:
+
+| Método | Descripción |
+| --- | --- |
+| `context.getPlugin()` | Devuelve la instancia del plugin (`JavaPlugin`). |
+| `context.getLogger()` | Logger preconfigurado para escribir en consola. |
+| `context.getMessages()` | Acceso al `MessagesManager` para reutilizar mensajes coloreados y el prefijo oficial. |
+| `context.getCommands().register(definición)` | Registra un nuevo subcomando para `/vct`. |
+| `context.getScheduler().runTask(...)` | Ejecuta una función en el siguiente tick. |
+| `context.getScheduler().runTaskLater(función, delay)` | Ejecuta la función después de `delay` ticks. |
+| `context.getScheduler().runTaskTimer(función, delay, period)` | Ejecuta la función en bucle cada `period` ticks. |
+
+### Registro de comandos
+
+La llamada `context.getCommands().register({...})` recibe un objeto con la siguiente estructura mínima:
+
+```js
+context.getCommands().register({
+  name: 'miexpansion',
+  description: 'Descripción corta que aparece en /vct help.',
+  usage: '/vct miexpansion <args>',
+  permission: 'voiidcountdowntimer.miexpansion',
+  execute: function (sender, args) {
+    // Lógica del subcomando
+    return true;
+  },
+  tabComplete: function (sender, args) {
+    return ['opcion1', 'opcion2'];
+  }
+});
+```
+
+- `execute` debe devolver `true` para indicar que el comando fue manejado correctamente.
+- `permission` es opcional; si la incluyes, VCT comprobará que el remitente tenga dicho permiso antes de ejecutar o sugerir tab completions.
+- Puedes registrar tantos subcomandos como necesite tu expansión.
+
+### Planificador de tareas
+
+`context.getScheduler()` ofrece métodos sincronizados compatibles con Paper y Folia. Cada llamada devuelve un objeto con `cancel()` que puedes guardar para detener tareas recurrentes.
+
+```js
+var task = context.getScheduler().runTaskTimer(function () {
+  // Código que se repetirá cada segundo
+}, 20, 20);
+
+// Más adelante
+task.cancel();
+```
+
+Todas las tareas activas se cancelan automáticamente cuando el plugin se deshabilita o la expansión se descarga.
+
+## ⏱️ Ejemplo: expansión "Stopwatch"
+
+El plugin incluye una expansión de ejemplo llamada **Stopwatch**. Se copia automáticamente en el directorio de datos durante el primer arranque para que sirva como plantilla.
+
+Características principales:
+
+- Añade el subcomando `/vct stopwatch` con acciones `start`, `pause`, `resume`, `stop` y `lap`.
+- Usa el `MessagesManager` para mostrar mensajes con el prefijo oficial.
+- Crea un bossbar que muestra el tiempo transcurrido y se actualiza cada segundo mediante el planificador del contexto.
+- Define el permiso `voiidcountdowntimer.stopwatch` para controlar quién puede usar los comandos.
+
+Puedes revisar el código completo en `plugins/VoiidCountdownTimer/expansions/stopwatch/main.js` después del primer arranque. A partir de este ejemplo puedes crear tus propios scripts reutilizando la API descrita anteriormente.
+
+## 🚀 Flujo de trabajo recomendado
+
+1. Crea una carpeta dentro de `expansions` con el nombre de tu proyecto.
+2. Añade un `expansion.yml` con los metadatos básicos y el nombre del script principal.
+3. Implementa `main.js` siguiendo la estructura de `Stopwatch` (usa `onEnable`, registra comandos y programa tareas si lo necesitas).
+4. Reinicia o recarga el servidor: VCT detectará automáticamente la expansión y mostrará cualquier error en consola.
+5. Ajusta permisos y comandos según lo requiera tu servidor.
+
+Con este sistema puedes extender Voiid Countdown Timer con cronómetros personalizados, integraciones externas o automatizaciones sin necesidad de recompilar el plugin.
+
+## ♻️ Administrar expansiones desde el juego
+
+Los administradores pueden controlar las expansiones sin reiniciar el servidor utilizando los nuevos subcomandos de `/vct`:
+
+| Comando | Acción |
+| --- | --- |
+| `/vct reload config` | Recarga `config.yml` y actualiza el texto del temporizador. |
+| `/vct reload expansion <nombre>` | Recarga una expansión concreta (deshabilita, vuelve a cargar el script y re-registra sus comandos). |
+| `/vct reload allexpansions` | Recarga todas las expansiones instaladas en el directorio. |
+| `/vct expansion info <nombre>` | Muestra metadatos (versión, autores, descripción) y si está habilitada. |
+| `/vct expansion enable <nombre>` | Activa una expansión disponible en disco. |
+| `/vct expansion disable <nombre>` | Desactiva una expansión actualmente habilitada. |
+| `/vct expansion reload <nombre>` | Recarga rápidamente una expansión (atajo de desactivar + activar). |
+| `/vct expansion reloadall` | Igual que el comando de `reload allexpansions`, accesible desde el mismo menú. |
+
+Todos estos subcomandos respetan las pestañas de autocompletado para sugerir los nombres de expansiones instaladas, por lo que administrar múltiples scripts resulta mucho más cómodo.

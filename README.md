@@ -75,6 +75,13 @@ Voiid Countdown Timer includes:
 - To see all available commands, use `/vct help`.
 - In `config.yml`, you can customize various timer options; all of them are detailed in the [official documentation.](https://vctdocs.mintlify.app/)
 
+## 🧩 Expansions
+- Add optional features to the plugin by dropping scripted expansions inside `plugins/VoiidCountdownTimer/expansions/`.
+- Each expansion needs an `expansion.yml` metadata file and a JavaScript entry point (for example `main.js`).
+- A ready-to-use **Stopwatch** expansion is bundled as an example; it adds the command `/vct stopwatch` (permission `voiidcountdowntimer.stopwatch`).
+- Manage expansions in-game with `/vct reload expansion <name>` or `/vct expansion <info|enable|disable|reload|reloadall>` without restarting your server.
+- VCT continues to run normally even if you decide not to install any expansions.
+
 ## [📚 Documentation](https://vctdocs.mintlify.app/)
 
 <img src="https://github.com/user-attachments/assets/19d69e0d-1e31-450f-aa13-835cc22c93de" height="120px"/>

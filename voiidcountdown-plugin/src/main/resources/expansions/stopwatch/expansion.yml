@@ -1,0 +1,7 @@
+name: Stopwatch
+main: main.js
+version: 1.0.0
+authors:
+  - VoiidCountdownTimer
+  - Community
+description: Cronómetro básico controlado por comandos para Voiid Countdown Timer.
