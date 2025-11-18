@@ -6,6 +6,7 @@ Timers:
     sound_pitch: 1.5
     bossbar_color: BLUE
     bossbar_style: SEGMENTED_10
+    format: COUNTDOWN
     enabled: true
     sound_enabled: true
 
@@ -16,5 +17,6 @@ Timers:
     sound_pitch: 0.5
     bossbar_color: YELLOW
     bossbar_style: SEGMENTED_20
+    format: COUNTDOWN
     enabled: true
     sound_enabled: true

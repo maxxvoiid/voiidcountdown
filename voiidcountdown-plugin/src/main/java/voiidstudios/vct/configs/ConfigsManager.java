@@ -6,6 +6,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import voiidstudios.vct.VoiidCountdownTimer;
 import voiidstudios.vct.configs.model.CustomConfig;
 import voiidstudios.vct.configs.model.TimerConfig;
+import voiidstudios.vct.configs.model.TimerFormat;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -87,6 +88,7 @@ public class ConfigsManager {
                     float soundPitch = (float) config.getDouble(base + "sound_pitch", 1.0);
                     String colorStr = config.getString(base + "bossbar_color", "WHITE");
                     String styleStr = config.getString(base + "bossbar_style", "SOLID");
+                    String formatStr = config.getString(base + "format", "COUNTDOWN");
 
                     BarColor color;
                     try {
@@ -102,7 +104,14 @@ public class ConfigsManager {
                         style = BarStyle.SOLID;
                     }
 
-                    TimerConfig tc = new TimerConfig(key, text, sound, color, style, enabled, soundEnabled, soundVolume, soundPitch);
+                    TimerFormat format;
+                    try {
+                        format = TimerFormat.valueOf(formatStr.toUpperCase());
+                    } catch (Exception e) {
+                        format = TimerFormat.COUNTDOWN;
+                    }
+
+                    TimerConfig tc = new TimerConfig(key, text, sound, color, style, format, enabled, soundEnabled, soundVolume, soundPitch);
 
                     timersConfigs.put(key, tc);
                 }
@@ -119,6 +128,7 @@ public class ConfigsManager {
                 config.set(base + "enabled", tc.isEnabled());
                 config.set(base + "sound_enabled", tc.isSoundEnabled());
                 config.set(base + "text", tc.getText());
+                config.set(base + "format", tc.getFormat().toString());
                 config.set(base + "sound", tc.getSound());
                 config.set(base + "sound_volume", tc.getSoundVolume());
                 config.set(base + "sound_pitch", tc.getSoundPitch());

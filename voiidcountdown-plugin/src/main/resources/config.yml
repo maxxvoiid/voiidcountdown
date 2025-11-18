@@ -28,6 +28,7 @@ Timers:
     sound_pitch: 1.0 # The pitch of the sound (1.0 is normal pitch)
     bossbar_color: WHITE # The boss bar color is BLUE, GREEN, PINK, PURPLE, RED, WHITE, or YELLOW.
     bossbar_style: SOLID # The boss bar style is SOLID, SEGMENTED_6, SEGMENTED_10, SEGMENTED_12, or SEGMENTED_20.
+    format: COUNTDOWN # COUNTDOWN for the default behaviour or STOPWATCH for counting up via the Stopwatch expansion.
     enabled: true # Defines whether this timer is available for selection.
     sound_enabled: false # Defines whether this timer plays sound every second.
 
@@ -38,5 +39,6 @@ Timers:
     sound_pitch: 2.0
     bossbar_color: GREEN
     bossbar_style: SEGMENTED_6
+    format: COUNTDOWN
     enabled: true
     sound_enabled: true

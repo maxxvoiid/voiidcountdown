@@ -8,6 +8,7 @@ import org.jetbrains.annotations.Nullable;
 
 import voiidstudios.vct.VoiidCountdownTimer;
 import voiidstudios.vct.configs.model.TimerConfig;
+import voiidstudios.vct.configs.model.TimerFormat;
 import voiidstudios.vct.managers.MessagesManager;
 import voiidstudios.vct.managers.TimerManager;
 import voiidstudios.vct.utils.TimerDefaults;
@@ -27,13 +28,16 @@ public class VCTActions {
                 settings.sound,
                 settings.color,
                 settings.style,
+                settings.format,
                 usedTimerId,
                 settings.hasSound,
                 settings.volume,
                 settings.pitch
         );
 
-        timer.start();
+        if (settings.format == TimerFormat.COUNTDOWN) {
+            timer.start();
+        }
         TimerManager.getInstance().setTimer(timer);
 
         Bukkit.getPluginManager().callEvent(new VCTEvent(timer, VCTEvent.VCTEventType.CREATE, sender));

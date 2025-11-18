@@ -3,6 +3,8 @@ package voiidstudios.vct.configs.model;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 
+import voiidstudios.vct.configs.model.TimerFormat;
+
 public class TimerConfig {
     private String id;
     private String text;
@@ -11,10 +13,11 @@ public class TimerConfig {
     private float soundPitch;
     private BarColor color;
     private BarStyle style;
+    private TimerFormat format;
     private boolean enabled;
     private boolean soundEnabled;
 
-    public TimerConfig(String id, String text, String sound, BarColor color, BarStyle style, boolean enabled, boolean soundEnabled, float soundVolume, float soundPitch) {
+    public TimerConfig(String id, String text, String sound, BarColor color, BarStyle style, TimerFormat format, boolean enabled, boolean soundEnabled, float soundVolume, float soundPitch) {
         this.id = id;
         this.text = text;
         this.sound = sound;
@@ -22,6 +25,7 @@ public class TimerConfig {
         this.soundPitch = soundPitch;
         this.color = color;
         this.style = style;
+        this.format = format;
         this.enabled = enabled;
         this.soundEnabled = soundEnabled;
     }
@@ -33,6 +37,7 @@ public class TimerConfig {
     public float getSoundPitch() { return this.soundPitch; }
     public BarColor getColor() { return this.color; }
     public BarStyle getStyle() { return this.style; }
+    public TimerFormat getFormat() { return this.format; }
     public boolean isEnabled() { return this.enabled; }
     public boolean isSoundEnabled() { return this.soundEnabled; }
     public void setText(String text) { this.text = text; }
@@ -41,6 +46,7 @@ public class TimerConfig {
     public void setSoundPitch(float pitch) { this.soundPitch = pitch; }
     public void setColor(BarColor color) { this.color = color; }
     public void setStyle(BarStyle style) { this.style = style; }
+    public void setFormat(TimerFormat format) { this.format = format; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public void setSoundEnabled(boolean enabled) { this.soundEnabled = enabled; }
 }

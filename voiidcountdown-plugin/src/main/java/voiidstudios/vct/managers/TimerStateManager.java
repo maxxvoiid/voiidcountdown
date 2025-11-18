@@ -5,6 +5,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import voiidstudios.vct.VoiidCountdownTimer;
 import voiidstudios.vct.api.Timer;
 import voiidstudios.vct.configs.model.CustomConfig;
+import voiidstudios.vct.configs.model.TimerFormat;
 import voiidstudios.vct.utils.TimerDefaults;
 
 public class TimerStateManager {
@@ -63,6 +64,7 @@ public class TimerStateManager {
                 settings.sound,
                 settings.color,
                 settings.style,
+                settings.format,
                 usedId,
                 settings.hasSound,
                 settings.volume,
@@ -73,9 +75,11 @@ public class TimerStateManager {
         timer.setSeconds(remaining);
         TimerManager.getInstance().setTimer(timer);
 
+        Bukkit.getPluginManager().callEvent(new voiidstudios.vct.api.VCTEvent(timer, voiidstudios.vct.api.VCTEvent.VCTEventType.CREATE, null));
+
         msgManager.console(VoiidCountdownTimer.prefix+"&aLoaded the state of timer " + savedId + " &e(" + remaining + "/" + initial + " seconds | Paused: " + paused + ")");
 
-        if (!paused) {
+        if (!paused && settings.format == TimerFormat.COUNTDOWN) {
             timer.start();
         }
     }

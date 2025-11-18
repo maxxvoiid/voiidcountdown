@@ -45,6 +45,7 @@ public class TimerManager {
 
         if (this.timer != null) {
             this.timer.stop();
+            Bukkit.getPluginManager().callEvent(new VCTEvent(timer, VCTEvent.VCTEventType.STOP, sender));
             this.timer = null;
 
             if (sender != null) {

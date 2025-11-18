@@ -1,0 +1,8 @@
+name: Stopwatch
+main: main.js
+version: 2.0.0
+authors:
+- VoiidCountdownTimer
+- Community
+description: Cronómetro integrado con los timers de VCT usando formatos COUNTDOWN o STOPWATCH.
+enabled: true
