@@ -8,6 +8,7 @@ import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import voiidstudios.vct.VoiidCountdownTimer;
 import voiidstudios.vct.expansions.ScriptExpansion;
 import voiidstudios.vct.managers.MessagesManager;
+import voiidstudios.vct.managers.TranslationManager;
 import voiidstudios.vct.utils.ServerCompatibility;
 
 import java.util.Locale;
@@ -36,6 +37,10 @@ public class ScriptExpansionContext {
 
     public MessagesManager getMessages() {
         return VoiidCountdownTimer.getMessagesManager();
+    }
+
+    public TranslationManager.TranslationBundle getTranslations(String namespace) {
+        return VoiidCountdownTimer.getMessagesManager().getCustomTranslations(namespace);
     }
 
     public Commands getCommands() {

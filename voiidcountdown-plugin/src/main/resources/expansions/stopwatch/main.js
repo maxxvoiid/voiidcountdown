@@ -20,6 +20,7 @@ function onEnable(ctx) {
     context = ctx;
     expansionFolder = new File(VoiidCountdownTimer.getInstance().getDataFolder(), 'expansions/stopwatch');
 
+    loadScript('scripts/stopwatch-lang.js');
     loadScript('scripts/time.js');
     loadScript('scripts/stopwatch-manager.js');
 
