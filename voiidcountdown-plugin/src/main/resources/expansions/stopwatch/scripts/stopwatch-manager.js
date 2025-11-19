@@ -130,7 +130,13 @@
     };
 
     StopwatchSession.prototype.updateDisplay = function () {
-        var rawText = (this.config && this.config.getText) ? this.config.getText() : '%HH%:%MM%:%SS%';
+        var rawText = (this.config && this.config.getText) ? this.config.getText() : null;
+        if (!rawText && typeof StopwatchLang !== 'undefined') {
+            rawText = StopwatchLang.get('bossbar.text');
+        }
+        if (!rawText) {
+            rawText = '%HH%:%MM%:%SS%';
+        }
         var formattedText = StopwatchTime.formatText(rawText, this.elapsedMillis);
         var phasedText = VoiidCountdownTimer.getPhasesManager().formatPhases(formattedText);
         applyFormattedTitle(this.bossbar, phasedText);
@@ -153,6 +159,9 @@
         init: function (context) {
             this.context = context;
             this.scheduler = context.getScheduler();
+            if (typeof StopwatchLang !== 'undefined') {
+                StopwatchLang.init(context);
+            }
         },
         getConfig: function (timerId) {
             return VoiidCountdownTimer.getConfigsManager().getTimerConfig(timerId);

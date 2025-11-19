@@ -14,7 +14,8 @@ public class TranslationManager {
 
     private FileConfiguration langBase;
     private FileConfiguration langSelected;
-    private FileConfiguration langCustom;
+    private FileConfiguration langSelectedCustom;
+    private FileConfiguration langCustomOverrides;
 
     private String currentLang = "en_US";
 
@@ -25,9 +26,10 @@ public class TranslationManager {
     public void loadLanguage(String langCode) {
         this.currentLang = langCode;
 
-        langBase     = loadYaml("core/messages/origins/en_US.yml");
-        langSelected = loadYaml("core/messages/origins/" + langCode + ".yml");
-        langCustom   = loadYaml("core/messages/custom/custom.yml");
+        langBase            = loadYaml("core/messages/origins/en_US.yml");
+        langSelected        = loadYaml("core/messages/origins/" + langCode + ".yml");
+        langSelectedCustom  = loadYaml("core/messages/custom/" + langCode + ".yml");
+        langCustomOverrides = loadYaml("core/messages/custom/custom.yml");
 
         syncMissingKeys();
     }
@@ -70,41 +72,11 @@ public class TranslationManager {
     }
 
     public String get(String key) {
-        if (langCustom != null && langCustom.contains(key)) {
-            return langCustom.getString(key);
-        }
-        if (langSelected != null && langSelected.contains(key)) {
-            return langSelected.getString(key);
-        }
-        if (langBase != null && langBase.contains(key)) {
-            return langBase.getString(key);
-        }
-        return null;
+        return getFromConfigurations(key, getBaseSources());
     }
 
     public List<String> getStringList(String key) {
-        if (langCustom != null && langCustom.isList(key)) {
-            return langCustom.getStringList(key);
-        }
-
-        if (langSelected != null && langSelected.isList(key)) {
-            return langSelected.getStringList(key);
-        }
-
-        if (langBase != null && langBase.isList(key)) {
-            return langBase.getStringList(key);
-        }
-
-        String raw = get(key);
-        if (raw == null) {
-            return Collections.emptyList();
-        }
-
-        if (!raw.contains("\n")) {
-            return Collections.singletonList(raw);
-        }
-
-        return Arrays.asList(raw.split("\n"));
+        return asStringList(key, getBaseSources());
     }
 
     public String formatKey(String key, Map<String, String> placeholders) {
@@ -141,6 +113,115 @@ public class TranslationManager {
                 langSelected.save(new File(plugin.getDataFolder(),
                         "core/messages/origins/" + currentLang + ".yml"));
             } catch (IOException ignored) {}
+        }
+    }
+
+    public String getCurrentLanguage() {
+        return currentLang;
+    }
+
+    private List<FileConfiguration> getBaseSources() {
+        List<FileConfiguration> sources = new ArrayList<>();
+        addIfNotEmpty(langCustomOverrides, sources);
+        addIfNotEmpty(langSelectedCustom, sources);
+        addIfNotEmpty(langSelected, sources);
+        addIfNotEmpty(langBase, sources);
+        return sources;
+    }
+
+    private void addIfNotEmpty(FileConfiguration config, List<FileConfiguration> list) {
+        if (config == null || config.getKeys(true).isEmpty()) return;
+        list.add(config);
+    }
+
+    private List<String> asStringList(String key, List<FileConfiguration> sources) {
+        for (FileConfiguration source : sources) {
+            if (source.isList(key)) {
+                return source.getStringList(key);
+            }
+        }
+
+        String raw = getFromConfigurations(key, sources);
+        if (raw == null) {
+            return Collections.emptyList();
+        }
+
+        if (!raw.contains("\n")) {
+            return Collections.singletonList(raw);
+        }
+
+        return Arrays.asList(raw.split("\n"));
+    }
+
+    private String getFromConfigurations(String key, List<FileConfiguration> sources) {
+        for (FileConfiguration config : sources) {
+            if (config.contains(key)) {
+                return config.getString(key);
+            }
+        }
+        return null;
+    }
+
+    public TranslationBundle forCustomNamespace(String namespace) {
+        return new TranslationBundle(namespace);
+    }
+
+    public class TranslationBundle {
+        private final String namespace;
+        private FileConfiguration namespacedSelected;
+        private FileConfiguration namespacedDefault;
+        private String lastLang;
+
+        private TranslationBundle(String namespace) {
+            this.namespace = namespace == null ? "" : namespace.trim();
+            reload();
+        }
+
+        public void reload() {
+            this.lastLang = currentLang;
+            if (namespace.isEmpty()) {
+                this.namespacedSelected = new YamlConfiguration();
+                this.namespacedDefault = new YamlConfiguration();
+                return;
+            }
+
+            this.namespacedSelected = loadYaml("core/messages/custom/" + namespace + "/" + currentLang + ".yml");
+            this.namespacedDefault  = loadYaml("core/messages/custom/" + namespace + "/en_US.yml");
+        }
+
+        public String get(String key) {
+            List<FileConfiguration> sources = getNamespacedSources();
+            return getFromConfigurations(key, sources);
+        }
+
+        public List<String> getStringList(String key) {
+            return asStringList(key, getNamespacedSources());
+        }
+
+        public String formatKey(String key, Map<String, String> placeholders) {
+            return formatRaw(get(key), placeholders);
+        }
+
+        public String formatRaw(String raw, Map<String, String> placeholders) {
+            if (raw == null) return null;
+            if (placeholders != null) {
+                for (Map.Entry<String, String> entry : placeholders.entrySet()) {
+                    raw = raw.replace(entry.getKey(), entry.getValue());
+                }
+            }
+            return raw;
+        }
+
+        private List<FileConfiguration> getNamespacedSources() {
+            if (!Objects.equals(lastLang, currentLang)) {
+                reload();
+            }
+
+            List<FileConfiguration> sources = new ArrayList<>();
+            addIfNotEmpty(langCustomOverrides, sources);
+            addIfNotEmpty(namespacedSelected, sources);
+            addIfNotEmpty(namespacedDefault, sources);
+            return sources;
         }
     }
 }

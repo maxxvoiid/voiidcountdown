@@ -101,6 +101,10 @@ public class MessagesManager {
         return translations.getStringList(key);
     }
 
+    public TranslationManager.TranslationBundle getCustomTranslations(String namespace) {
+        return translations.forCustomNamespace(namespace);
+    }
+
     public void console(String msg) {
         Bukkit.getConsoleSender().sendMessage(color(msg));
     }

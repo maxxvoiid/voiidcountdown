@@ -21,6 +21,7 @@ public class CoreFolderConfigManager extends DataFolderConfigManager {
 
         copyResourceIfMissing("core/messages/origins/en_US.yml");
         copyResourceIfMissing("core/messages/custom/custom.yml");
+        copyResourceIfMissing("core/messages/custom/stopwatch/en_US.yml");
     }
 
     private void copyResourceIfMissing(String path) {
