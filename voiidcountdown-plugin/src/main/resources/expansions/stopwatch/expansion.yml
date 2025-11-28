@@ -1,0 +1,7 @@
+name: Stopwatch
+main: main.js
+version: 1.0.0
+authors:
+- Voiid Studios
+description: Add a stopwatch system to VCT in a simple and easy way!
+enabled: false
