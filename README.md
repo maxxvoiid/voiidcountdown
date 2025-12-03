@@ -33,6 +33,13 @@ With both versions, you can:
 - 🖌️ Customize color styles.
 - 🛠️ Run custom events when the timer starts or ends.
 
+## 📁 Repository structure
+- [`datapack/`](./datapack): Minecraft datapack source, including the functions that power the in-game countdown experience.
+- [`plugin/`](./plugin): Spigot/Paper plugin source code, organized as a Maven project with the main plugin entrypoint and supporting managers.
+- [`docs/`](./docs): Mintlify-powered documentation site content, including guides, changelogs, and API references.
+
+Each folder now contains its own README with quick pointers to the most important files so you can jump straight to the code you need.
+
 ## ✨ Features
 Voiid Countdown Timer includes:
 - 🎨 Custom Colors Styles
