@@ -1,0 +1,6 @@
+name: UltraAPI
+main: dev.voiidstudios.ultraapi.UltraAPI
+version: 1.0.0
+api-version: 1.13
+authors: ["Voiid Studios"]
+description: Shared utilities for configuration management.

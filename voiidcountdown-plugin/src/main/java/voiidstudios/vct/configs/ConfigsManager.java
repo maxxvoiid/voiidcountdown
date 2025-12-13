@@ -2,9 +2,9 @@ package voiidstudios.vct.configs;
 
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
+import dev.voiidstudios.ultraapi.config.UConfig;
 import org.bukkit.configuration.file.FileConfiguration;
 import voiidstudios.vct.VoiidCountdownTimer;
-import voiidstudios.vct.configs.model.CustomConfig;
 import voiidstudios.vct.configs.model.TimerConfig;
 
 import java.util.ArrayList;
@@ -40,10 +40,10 @@ public class ConfigsManager {
     public void configureTimers() {
         timersConfigs.clear();
 
-        ArrayList<CustomConfig> vctTimers = getTimersConfigs();
+        ArrayList<UConfig> vctTimers = getTimersConfigs();
 
-        for(CustomConfig configFile : vctTimers){
-            FileConfiguration config = configFile.getConfig();
+        for(UConfig configFile : vctTimers){
+            FileConfiguration config = configFile.getConfiguration();
 
             if(config.contains("Timers")){
                 for (String key : config.getConfigurationSection("Timers").getKeys(false)) {
@@ -74,7 +74,7 @@ public class ConfigsManager {
                         config.set(base + "sound_enabled", false);
                     }
 
-                    configFile.saveConfig();
+                    configFile.save();
 
                     boolean enabled = config.getBoolean(base + "enabled", true);
                     boolean soundEnabled = config.getBoolean(base + "sound_enabled", false);
@@ -108,8 +108,8 @@ public class ConfigsManager {
     }
 
     public void saveTimerConfig(TimerConfig tc) {
-        for (CustomConfig configFile : getTimersConfigs()) {
-            FileConfiguration config = configFile.getConfig();
+        for (UConfig configFile : getTimersConfigs()) {
+            FileConfiguration config = configFile.getConfiguration();
 
             String base = "Timers." + tc.getId() + ".";
             if (config.contains(base)) {
@@ -122,7 +122,7 @@ public class ConfigsManager {
                 config.set(base + "bossbar_color", tc.getColor().toString());
                 config.set(base + "bossbar_style", tc.getStyle().toString());
 
-                configFile.saveConfig();
+                configFile.save();
                 break;
             }
         }
@@ -137,8 +137,8 @@ public class ConfigsManager {
         return new LinkedHashMap<>(timersConfigs);
     }
 
-    public ArrayList<CustomConfig> getTimersConfigs() {
-        ArrayList<CustomConfig> timers = new ArrayList<>();
+    public ArrayList<UConfig> getTimersConfigs() {
+        ArrayList<UConfig> timers = new ArrayList<>();
 
         timers.add(mainConfigManager.getConfigFile());
         timers.addAll(timerFolderConfigManager.getConfigs());

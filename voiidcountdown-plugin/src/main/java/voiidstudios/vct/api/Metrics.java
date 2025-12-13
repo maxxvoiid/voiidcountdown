@@ -1,5 +1,7 @@
 package voiidstudios.vct.api;
 
+import dev.voiidstudios.ultraapi.UltraAPI;
+import dev.voiidstudios.ultraapi.config.UConfig;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -28,7 +30,7 @@ import java.util.stream.Collectors;
 import java.util.zip.GZIPOutputStream;
 import javax.net.ssl.HttpsURLConnection;
 import org.bukkit.Bukkit;
-import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
@@ -49,8 +51,8 @@ public class Metrics {
         this.plugin = plugin;
         // Get the config file
         File bStatsFolder = new File(plugin.getDataFolder().getParentFile(), "bStats");
-        File configFile = new File(bStatsFolder, "config.yml");
-        YamlConfiguration config = YamlConfiguration.loadConfiguration(configFile);
+        UConfig bStatsConfig = UltraAPI.getConfigManager().config(plugin, bStatsFolder, "config.yml");
+        FileConfiguration config = bStatsConfig.getConfiguration();
         if (!config.isSet("serverUuid")) {
             config.addDefault("enabled", true);
             config.addDefault("serverUuid", UUID.randomUUID().toString());
@@ -68,8 +70,8 @@ public class Metrics {
                                     + "anonymous.")
                     .copyDefaults(true);
             try {
-                config.save(configFile);
-            } catch (IOException ignored) {
+                bStatsConfig.save();
+            } catch (Exception ignored) {
             }
         }
         // Load the data

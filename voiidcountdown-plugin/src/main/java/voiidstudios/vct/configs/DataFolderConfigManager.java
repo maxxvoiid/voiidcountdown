@@ -1,7 +1,8 @@
 package voiidstudios.vct.configs;
 
+import dev.voiidstudios.ultraapi.UltraAPI;
+import dev.voiidstudios.ultraapi.config.UConfig;
 import voiidstudios.vct.VoiidCountdownTimer;
-import voiidstudios.vct.configs.model.CustomConfig;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -33,24 +34,23 @@ public abstract class DataFolderConfigManager {
         }
     }
 
-    public CustomConfig getConfigFile(String pathName) {
-        CustomConfig customConfig = new CustomConfig(pathName, plugin, folderName, true);
-        customConfig.registerConfig();
-        return customConfig;
+    public UConfig getConfigFile(String pathName) {
+        return UltraAPI.config(plugin, folderName + File.separator + pathName);
     }
 
-    public ArrayList<CustomConfig> getConfigs(){
-        ArrayList<CustomConfig> configs = new ArrayList<>();
+    public ArrayList<UConfig> getConfigs(){
+        ArrayList<UConfig> configs = new ArrayList<>();
 
         String pathFile = plugin.getDataFolder() + File.separator + folderName;
         File folder = new File(pathFile);
         File[] listOfFiles = folder.listFiles();
-        for (File file : listOfFiles) {
-            if (file.isFile()) {
-                String pathName = file.getName();
-                CustomConfig commonConfig = new CustomConfig(pathName, plugin, folderName, true);
-                commonConfig.registerConfig();
-                configs.add(commonConfig);
+        if (listOfFiles != null) {
+            for (File file : listOfFiles) {
+                if (file.isFile()) {
+                    String pathName = file.getName();
+                    UConfig commonConfig = UltraAPI.config(plugin, folderName + File.separator + pathName);
+                    configs.add(commonConfig);
+                }
             }
         }
 
