@@ -1,7 +1,7 @@
 package voiidstudios.vct.configs;
 
+import dev.voiidstudios.ultraapi.UltraAPI;
 import voiidstudios.vct.VoiidCountdownTimer;
-import voiidstudios.vct.configs.model.CustomConfig;
 
 public class TimersFolderConfigManager extends DataFolderConfigManager {
     public TimersFolderConfigManager(VoiidCountdownTimer plugin, String folderName) {
@@ -10,7 +10,7 @@ public class TimersFolderConfigManager extends DataFolderConfigManager {
 
     @Override
     public void createFiles() {
-        new CustomConfig("more_timers.yml",plugin,folderName,false).registerConfig();
+        UltraAPI.config(plugin, folderName + "/more_timers.yml");
     }
 
     @Override

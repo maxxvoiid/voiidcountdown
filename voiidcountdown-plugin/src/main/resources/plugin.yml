@@ -4,6 +4,7 @@ version: 2.1.0-a2
 codename: nobelium
 authors: ["Voiid Studios"]
 api-version: 1.13
+depend: [UltraAPI]
 softdepend: ["PlaceholderAPI"]
 folia-supported: true
 
