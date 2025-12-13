@@ -3,15 +3,15 @@ package voiidstudios.vct.configs;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
+import dev.voiidstudios.ultraapi.UltraAPI;
+import dev.voiidstudios.ultraapi.config.UConfig;
 import org.bukkit.configuration.file.FileConfiguration;
 import voiidstudios.vct.VoiidCountdownTimer;
-import voiidstudios.vct.configs.model.CustomConfig;
 import voiidstudios.vct.utils.Formatter;
 
 public class MainConfigManager {
-    private CustomConfig configFile;
+    private UConfig configFile;
 
     private boolean auto_update;
     private boolean update_notification;
@@ -21,13 +21,12 @@ public class MainConfigManager {
     private boolean save_state_timers;
 
     public MainConfigManager(VoiidCountdownTimer plugin){
-        configFile = new CustomConfig("config.yml", plugin, null, false);
-        configFile.registerConfig();
+        configFile = UltraAPI.config(plugin, "config.yml");
         checkConfigsUpdate();
     }
 
     public void configure(){
-        FileConfiguration config = configFile.getConfig();
+        FileConfiguration config = configFile.getConfiguration();
 
         auto_update = config.getBoolean("Config.auto_update");
         update_notification = config.getBoolean("Config.update_notification");
@@ -38,24 +37,24 @@ public class MainConfigManager {
     }
 
     public void reloadConfig(){
-        configFile.reloadConfig();
+        configFile.reload();
         configure();
     }
 
     public FileConfiguration getConfig(){
-        return configFile.getConfig();
+        return configFile.getConfiguration();
     }
 
-    public CustomConfig getConfigFile(){
+    public UConfig getConfigFile(){
         return this.configFile;
     }
 
     public void saveConfig(){
-        configFile.saveConfig();
+        configFile.save();
     }
 
     public void checkConfigsUpdate(){
-        Path pathConfig = Paths.get(configFile.getRoute());
+        Path pathConfig = configFile.getFile().toPath();
         try {
             String text = new String(Files.readAllBytes(pathConfig));
             

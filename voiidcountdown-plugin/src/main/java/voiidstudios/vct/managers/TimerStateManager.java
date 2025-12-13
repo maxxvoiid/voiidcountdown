@@ -1,23 +1,23 @@
 package voiidstudios.vct.managers;
 
+import dev.voiidstudios.ultraapi.UltraAPI;
+import dev.voiidstudios.ultraapi.config.UConfig;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import voiidstudios.vct.VoiidCountdownTimer;
 import voiidstudios.vct.api.Timer;
-import voiidstudios.vct.configs.model.CustomConfig;
 import voiidstudios.vct.utils.TimerDefaults;
 
 public class TimerStateManager {
-    private final CustomConfig stateConfig;
+    private final UConfig stateConfig;
 
     public TimerStateManager(VoiidCountdownTimer plugin) {
-        this.stateConfig = new CustomConfig("timer_state.yml", plugin, null, true);
-        this.stateConfig.registerConfig();
+        this.stateConfig = UltraAPI.config(plugin, "timer_state.yml");
     }
 
     public void saveState() {
-        FileConfiguration cfg = stateConfig.getConfig();
+        FileConfiguration cfg = stateConfig.getConfiguration();
 
         Timer timer = TimerManager.getInstance().getTimer();
 
@@ -27,7 +27,7 @@ public class TimerStateManager {
             cfg.set("initial", null);
             cfg.set("remaining", null);
             cfg.set("paused", null);
-            stateConfig.saveConfig();
+            stateConfig.save();
             return;
         }
 
@@ -38,11 +38,11 @@ public class TimerStateManager {
         cfg.set("initial", timer.getInitialSeconds());
         cfg.set("remaining", timer.getRemainingSeconds());
         cfg.set("paused", timer.isPaused());
-        stateConfig.saveConfig();
+        stateConfig.save();
     }
 
     public void loadState() {
-        FileConfiguration cfg = stateConfig.getConfig();
+        FileConfiguration cfg = stateConfig.getConfiguration();
 
         if (!cfg.contains("active") || !cfg.getBoolean("active", false)) return;
 
