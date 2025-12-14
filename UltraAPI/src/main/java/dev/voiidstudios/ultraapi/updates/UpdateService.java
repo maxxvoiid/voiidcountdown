@@ -1,10 +1,10 @@
 package dev.voiidstudios.ultraapi.updates;
 
+import dev.voiidstudios.ultraapi.config.ConfigManager;
 import dev.voiidstudios.ultraapi.config.UConfig;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.logging.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 
@@ -14,12 +14,10 @@ import org.bukkit.plugin.Plugin;
 public class UpdateService {
 
     private final Map<String, UpdateProvider> providers = new HashMap<>();
-    private final Logger logger;
-    private final UConfig settings;
+    private final ConfigManager configManager;
 
-    public UpdateService(Logger logger, UConfig settings) {
-        this.logger = logger;
-        this.settings = settings;
+    public UpdateService(ConfigManager configManager) {
+        this.configManager = configManager;
         registerProvider(new ModrinthUpdateProvider());
         registerProvider(new GithubReleaseUpdateProvider());
     }
@@ -38,15 +36,16 @@ public class UpdateService {
      */
     public CompletableFuture<UpdateCheckResult> check(Plugin plugin, String provider, String projectId) {
         UpdateProvider updateProvider = providers.get(provider.toLowerCase());
-        boolean updatesEnabled = settings.getBoolean("Updates.enabled", true);
+        UConfig pluginConfig = configManager.config(plugin, "config.yml");
+        boolean updatesEnabled = pluginConfig.getBoolean("Updates.enabled", true);
 
         if (updateProvider == null) {
-            logger.warning("Unknown update provider '" + provider + "'.");
+            plugin.getLogger().warning("Unknown update provider '" + provider + "'.");
             return CompletableFuture.completedFuture(UpdateCheckResult.error(plugin, provider));
         }
 
         if (!updatesEnabled) {
-            logger.info("Update checks are disabled in UltraAPI/config.yml");
+            plugin.getLogger().info("Update checks are disabled in the plugin configuration.");
             return CompletableFuture.completedFuture(UpdateCheckResult.disabled(plugin));
         }
 
@@ -57,7 +56,7 @@ public class UpdateService {
                 logResult(plugin, result);
                 future.complete(result);
             } catch (Exception e) {
-                logger.severe("Error while checking updates for " + plugin.getName() + ": " + e.getMessage());
+                plugin.getLogger().severe("Error while checking updates for " + plugin.getName() + ": " + e.getMessage());
                 future.complete(UpdateCheckResult.error(plugin, provider));
             }
         };
@@ -76,13 +75,13 @@ public class UpdateService {
             return;
         }
         if (result.isError()) {
-            logger.warning("[" + plugin.getName() + "] Error checking updates using " + result.getProvider());
+            plugin.getLogger().warning("[" + plugin.getName() + "] Error checking updates using " + result.getProvider());
             return;
         }
         if (result.isUpdateAvailable()) {
-            logger.info("[" + plugin.getName() + "] New version available: " + result.getLatestVersion());
+            plugin.getLogger().info("[" + plugin.getName() + "] New version available: " + result.getLatestVersion());
         } else {
-            logger.info("[" + plugin.getName() + "] Plugin is up to date.");
+            plugin.getLogger().info("[" + plugin.getName() + "] Plugin is up to date.");
         }
     }
 }

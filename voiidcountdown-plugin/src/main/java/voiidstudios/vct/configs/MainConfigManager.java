@@ -21,7 +21,7 @@ public class MainConfigManager {
     private boolean save_state_timers;
 
     public MainConfigManager(VoiidCountdownTimer plugin){
-        configFile = UAPI.config("config.yml");
+        configFile = UAPI.config(plugin, "config.yml");
         checkConfigsUpdate();
     }
 

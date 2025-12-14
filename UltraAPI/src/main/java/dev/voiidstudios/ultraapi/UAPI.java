@@ -13,15 +13,19 @@ public final class UAPI {
     }
 
     public static UConfig config(Plugin plugin) {
-        return UltraAPI.config("config.yml");
-    }
-
-    public static UConfig config(String fileName) {
-        return UltraAPI.config(fileName);
+        return UltraAPI.config(plugin, "config.yml");
     }
 
     public static UConfig config(Plugin plugin, String fileName) {
         return UltraAPI.config(plugin, fileName);
+    }
+
+    /**
+     * @deprecated UltraAPI no longer exposes a shared configuration. Always provide the consuming plugin instance.
+     */
+    @Deprecated
+    public static UConfig config(String fileName) {
+        throw new IllegalStateException("UltraAPI no longer manages its own configuration. Pass the plugin instance to UAPI.config(plugin, \"" + fileName + "\").");
     }
 
     public static UpdateService updates() {

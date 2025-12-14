@@ -3,7 +3,6 @@ package dev.voiidstudios.ultraapi.config;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Logger;
 import org.bukkit.plugin.Plugin;
 
 /**
@@ -11,11 +10,9 @@ import org.bukkit.plugin.Plugin;
  */
 public class ConfigManager {
 
-    private final Logger logger;
     private final Map<String, UConfig> configs = new HashMap<>();
 
-    public ConfigManager(Logger logger) {
-        this.logger = logger;
+    public ConfigManager() {
     }
 
     /**
@@ -39,7 +36,7 @@ public class ConfigManager {
      */
     public UConfig config(Plugin plugin, File parent, String fileName) {
         String key = buildKey(plugin, parent, fileName);
-        return configs.computeIfAbsent(key, k -> new UConfig(plugin, parent, fileName, logger));
+        return configs.computeIfAbsent(key, k -> new UConfig(plugin, parent, fileName, plugin.getLogger()));
     }
 
     private String buildKey(Plugin plugin, File parent, String fileName) {
