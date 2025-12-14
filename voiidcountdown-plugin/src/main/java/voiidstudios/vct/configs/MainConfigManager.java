@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import dev.voiidstudios.ultraapi.UltraAPI;
+import dev.voiidstudios.ultraapi.UAPI;
 import dev.voiidstudios.ultraapi.config.UConfig;
 import org.bukkit.configuration.file.FileConfiguration;
 import voiidstudios.vct.VoiidCountdownTimer;
@@ -21,7 +21,7 @@ public class MainConfigManager {
     private boolean save_state_timers;
 
     public MainConfigManager(VoiidCountdownTimer plugin){
-        configFile = UltraAPI.config(plugin, "config.yml");
+        configFile = UAPI.config("config.yml");
         checkConfigsUpdate();
     }
 

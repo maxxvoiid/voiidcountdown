@@ -2,6 +2,7 @@ package dev.voiidstudios.ultraapi;
 
 import dev.voiidstudios.ultraapi.config.ConfigManager;
 import dev.voiidstudios.ultraapi.config.UConfig;
+import dev.voiidstudios.ultraapi.updates.UpdateService;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -15,12 +16,16 @@ public final class UltraAPI extends JavaPlugin {
 
     private static UltraAPI instance;
     private static ConfigManager configManager;
+    private static UConfig sharedConfig;
+    private static UpdateService updateService;
 
     @Override
     public void onEnable() {
         instance = this;
         configManager = new ConfigManager(getLogger());
-        getLogger().info("UltraAPI enabled. Configuration utilities are ready to use.");
+        sharedConfig = config("config.yml");
+        updateService = new UpdateService(getLogger(), sharedConfig);
+        getLogger().info("UltraAPI enabled. Configuration and update utilities are ready to use.");
     }
 
     @Override
@@ -40,6 +45,17 @@ public final class UltraAPI extends JavaPlugin {
     }
 
     /**
+     * Provides access to a configuration stored inside UltraAPI's data folder.
+     * Defaults are read from UltraAPI's resources, making the file reusable across plugins.
+     *
+     * @param fileName relative file path under the UltraAPI data folder
+     * @return managed {@link UConfig}
+     */
+    public static UConfig config(String fileName) {
+        return getConfigManager().config(getInstance(), getInstance().getDataFolder(), fileName);
+    }
+
+    /**
      * Exposes the shared {@link ConfigManager} instance.
      *
      * @return the singleton config manager
@@ -56,5 +72,25 @@ public final class UltraAPI extends JavaPlugin {
      */
     public static UltraAPI getInstance() {
         return instance;
+    }
+
+    /**
+     * @return update service used by plugins to perform centralized checks
+     */
+    public static UpdateService updates() {
+        if (updateService == null) {
+            updateService = new UpdateService(instance.getLogger(), sharedConfig != null ? sharedConfig : config("config.yml"));
+        }
+        return updateService;
+    }
+
+    /**
+     * @return shared configuration stored in the UltraAPI data folder
+     */
+    public static UConfig sharedConfig() {
+        if (sharedConfig == null) {
+            sharedConfig = config("config.yml");
+        }
+        return sharedConfig;
     }
 }
