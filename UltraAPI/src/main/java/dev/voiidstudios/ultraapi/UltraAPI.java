@@ -2,6 +2,7 @@ package dev.voiidstudios.ultraapi;
 
 import dev.voiidstudios.ultraapi.config.ConfigManager;
 import dev.voiidstudios.ultraapi.config.UConfig;
+import dev.voiidstudios.ultraapi.updates.UpdateService;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -15,12 +16,12 @@ public final class UltraAPI extends JavaPlugin {
 
     private static UltraAPI instance;
     private static ConfigManager configManager;
+    private static UpdateService updateService;
 
     @Override
     public void onEnable() {
         instance = this;
-        configManager = new ConfigManager(getLogger());
-        getLogger().info("UltraAPI enabled. Configuration utilities are ready to use.");
+        getLogger().info("UltraAPI loaded as a shared library. No configuration or tasks were started.");
     }
 
     @Override
@@ -46,7 +47,7 @@ public final class UltraAPI extends JavaPlugin {
      */
     public static ConfigManager getConfigManager() {
         if (configManager == null) {
-            configManager = new ConfigManager(instance != null ? instance.getLogger() : null);
+            configManager = new ConfigManager();
         }
         return configManager;
     }
@@ -56,5 +57,15 @@ public final class UltraAPI extends JavaPlugin {
      */
     public static UltraAPI getInstance() {
         return instance;
+    }
+
+    /**
+     * @return update service used by plugins to perform centralized checks
+     */
+    public static UpdateService updates() {
+        if (updateService == null) {
+            updateService = new UpdateService(getConfigManager());
+        }
+        return updateService;
     }
 }

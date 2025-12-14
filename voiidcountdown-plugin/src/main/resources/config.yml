@@ -1,3 +1,7 @@
+Updates:
+  # Toggle centralized update checks for all plugins using UltraAPI
+  enabled: true
+
 Config:
   # The plugin will attempt to auto-update when it finds a new version.
   auto_update: false

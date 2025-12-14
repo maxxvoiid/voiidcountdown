@@ -2,11 +2,11 @@ package voiidstudios.vct;
 
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
+import dev.voiidstudios.ultraapi.updates.UpdateCheckResult;
+import dev.voiidstudios.ultraapi.UAPI;
 import voiidstudios.vct.api.Metrics;
 import voiidstudios.vct.api.PAPIExpansion;
-import voiidstudios.vct.api.update.UpdateChecker;
-import voiidstudios.vct.api.update.UpdateCheckerResult;
-import voiidstudios.vct.api.update.UpdateDownloaderGithub;
+import voiidstudios.vct.api.update.UpdateDownloader;
 import voiidstudios.vct.commands.MainCommand;
 import voiidstudios.vct.configs.ConfigsManager;
 import voiidstudios.vct.listeners.PlayerListener;
@@ -27,7 +27,7 @@ public final class VoiidCountdownTimer extends JavaPlugin {
 
     public static ServerVersion serverVersion;
     private static VoiidCountdownTimer instance;
-    private UpdateChecker updateChecker;
+    private volatile String latestVersion;
     private static ConfigsManager configsManager;
     private static DynamicsManager dynamicsManager;
     private static MessagesManager messagesManager;
@@ -57,9 +57,7 @@ public final class VoiidCountdownTimer extends JavaPlugin {
         new Metrics(this, 26790);
         dependencyManager = new DependencyManager(this);
         dynamicsManager = new DynamicsManager(this);
-        updateChecker = new UpdateChecker(version);
-
-        checkUpdates(updateChecker.check());
+        UAPI.updates().check(this, "modrinth", "voiid-countdown-timer").thenAccept(this::handleUpdateResult);
 
         timerStateManager = new TimerStateManager(this);
         timerStateManager.loadState();
@@ -122,29 +120,45 @@ public final class VoiidCountdownTimer extends JavaPlugin {
         return instance;
     }
 
-    public UpdateChecker getUpdateChecker() {
-        return updateChecker;
+    public String getLatestVersion() {
+        return latestVersion;
     }
 
-    public void checkUpdates(UpdateCheckerResult result){
-        if(!result.isError()){
-            String latestVersion = result.getLatestVersion();
+    private void handleUpdateResult(UpdateCheckResult result) {
+        if (result == null || result.isDisabled()) {
+            return;
+        }
 
-            if (configsManager.getMainConfigManager().isUpdate_notification() && !configsManager.getMainConfigManager().isAuto_update()) sendConsoleUpdateMessage(latestVersion);
+        latestVersion = result.getLatestVersion();
+
+        if (result.isError()) {
+            if (configsManager.getMainConfigManager().isUpdate_notification() && !configsManager.getMainConfigManager().isAuto_update()) {
+                Bukkit.getConsoleSender().sendMessage(MessagesManager.getColoredMessage(prefix + "&cAn error occurred while checking for updates."));
+            }
+            return;
+        }
+
+        if (result.isUpdateAvailable()) {
+            if (configsManager.getMainConfigManager().isUpdate_notification() && !configsManager.getMainConfigManager().isAuto_update()) {
+                sendConsoleUpdateMessage(latestVersion);
+            }
 
             if (configsManager.getMainConfigManager().isAuto_update()) {
-                if (latestVersion != null && !latestVersion.equalsIgnoreCase(version)) {
-                    Bukkit.getConsoleSender().sendMessage(MessagesManager.getColoredMessage("&bAn stable update for Voiid Countdown Timer &e("+latestVersion+") &bis available. Downloading shortly..."));
+                if (result.getDownloadUrl() != null) {
+                    Bukkit.getConsoleSender().sendMessage(MessagesManager.getColoredMessage("&bAn stable update for Voiid Countdown Timer &e(" + latestVersion + ") &bis available. Downloading shortly..."));
+                    Runnable downloadTask = () -> UpdateDownloader.download(result.getDownloadUrl(), version, latestVersion);
 
                     if (ServerCompatibility.isFolia()) {
-                        Bukkit.getGlobalRegionScheduler().runDelayed(this, scheduledTask -> UpdateDownloaderGithub.downloadUpdate(), 2L);
+                        Bukkit.getGlobalRegionScheduler().runDelayed(this, scheduledTask -> downloadTask.run(), 2L);
                     } else {
-                        Bukkit.getScheduler().runTaskAsynchronously(this, () -> UpdateDownloaderGithub.downloadUpdate());
+                        Bukkit.getScheduler().runTaskAsynchronously(this, downloadTask);
                     }
+                } else if (configsManager.getMainConfigManager().isUpdate_notification()) {
+                    sendConsoleUpdateMessage(latestVersion);
                 }
             }
-        }else{
-            if (configsManager.getMainConfigManager().isUpdate_notification() && !configsManager.getMainConfigManager().isAuto_update()) Bukkit.getConsoleSender().sendMessage(MessagesManager.getColoredMessage(prefix+"&cAn error occurred while checking for updates."));
+        } else {
+            Bukkit.getConsoleSender().sendMessage(MessagesManager.getColoredMessage(prefix + "&aPlugin is up to date."));
         }
     }
 
