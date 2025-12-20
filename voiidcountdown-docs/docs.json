@@ -18,6 +18,12 @@
         "icon": "book",
         "groups": [
           {
+            "group": "Downloads",
+            "pages": [
+              "downloads"
+            ]
+          },
+          {
             "group": "Get Started",
             "pages": [
               "index",
