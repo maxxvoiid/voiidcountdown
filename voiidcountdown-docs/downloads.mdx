@@ -1,0 +1,530 @@
+---
+title: "Descargas"
+description: "Descarga Voiid Countdown en su versión Datapack (Lite) o Plugin (Full)."
+icon: "download"
+mode: "custom"
+---
+
+import { useEffect, useState } from "react";
+
+const API = "https://api.github.com/repos/Voiid-Studios/voiidcountdown/releases?per_page=50";
+const RELEASES_URL = "https://github.com/Voiid-Studios/voiidcountdown/releases";
+
+const defaultPlan = {
+  version: "Cargando...",
+  meta: "",
+  downloadHref: RELEASES_URL,
+  releaseHref: RELEASES_URL,
+  buttonLabel: "Download",
+};
+
+function cmpSemver(a, b) {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) > (pb[i] || 0)) return 1;
+    if ((pa[i] || 0) < (pb[i] || 0)) return -1;
+  }
+  return 0;
+}
+
+function formatDate(iso) {
+  try {
+    return new Intl.DateTimeFormat("es-CL", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+function pickAsset(assets) {
+  if (!assets || !assets.length) return null;
+  const preferred = assets.find((a) => /\.(jar|zip|mcaddon|mcpack)$/i.test(a.name));
+  return preferred || assets[0];
+}
+
+function hydrateRelease(rel) {
+  if (!rel) {
+    return {
+      version: "No release found",
+      meta: "",
+      downloadHref: RELEASES_URL,
+      releaseHref: RELEASES_URL,
+      buttonLabel: "View releases",
+    };
+  }
+
+  const asset = pickAsset(rel.assets);
+  return {
+    version: `Version ${rel.tag_name}`,
+    meta: `Published on ${formatDate(rel.published_at)} · ${rel.assets.length} asset(s)`,
+    downloadHref: asset ? asset.browser_download_url : rel.html_url,
+    releaseHref: rel.html_url,
+    buttonLabel: asset ? "Download" : "View assets",
+  };
+}
+
+function Plan({ title, description, features, data, popular }) {
+  return (
+    <div className={`plan${popular ? " popular" : ""}`}>
+      <h2>{title}</h2>
+      <div className="price">{data.version}</div>
+      <small>{description}</small>
+      <ul className="features">
+        {features.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+      <div className="btns">
+        <a className="btn primary" target="_blank" rel="noreferrer" href={data.downloadHref}>
+          {data.buttonLabel}
+        </a>
+        <a className="btn external" target="_blank" rel="noreferrer" href={data.releaseHref}>
+          View release
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="lucide lucide-external-link-icon lucide-external-link"
+          >
+            <path d="M15 3h6v6" />
+            <path d="M10 14 21 3" />
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+          </svg>
+        </a>
+      </div>
+      <div className="version">{data.meta}</div>
+    </div>
+  );
+}
+
+function FeatureRow({ feature, lite, full }) {
+  return (
+    <tr>
+      <td>{feature}</td>
+      <td className={lite.className}>{lite.text}</td>
+      <td className={full.className}>{full.text}</td>
+    </tr>
+  );
+}
+
+export default function Downloads() {
+  const [liteRelease, setLiteRelease] = useState(defaultPlan);
+  const [fullRelease, setFullRelease] = useState(defaultPlan);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const res = await fetch(API, {
+          headers: { Accept: "application/vnd.github+json" },
+        });
+        if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+
+        const releases = await res.json();
+        const stable = releases.filter(
+          (r) => !r.prerelease && !r.draft && /^\d+\.\d+\.\d+$/.test(r.tag_name),
+        );
+
+        const byMajor = { 1: [], 2: [] };
+        for (const r of stable) {
+          const major = parseInt(r.tag_name.split(".")[0], 10);
+          if (major === 1) byMajor[1].push(r);
+          if (major === 2) byMajor[2].push(r);
+        }
+
+        const pickLatest = (list) => list.sort((a, b) => cmpSemver(b.tag_name, a.tag_name))[0] || null;
+        const latestLite = pickLatest(byMajor[1]);
+        const latestFull = pickLatest(byMajor[2]);
+
+        if (cancelled) return;
+        setLiteRelease(hydrateRelease(latestLite));
+        setFullRelease(hydrateRelease(latestFull));
+      } catch (err) {
+        console.error(err);
+        if (cancelled) return;
+        setHasError(true);
+        setLiteRelease({ ...defaultPlan, version: "Error", buttonLabel: "View releases" });
+        setFullRelease({ ...defaultPlan, version: "Error", buttonLabel: "View releases" });
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const featureRows = [
+    {
+      feature: "Compatibility",
+      lite: { className: "limited", text: "Vanilla (1.15+)" },
+      full: { className: "limited", text: "Spigot, Paper and forks (1.13+)" },
+    },
+    {
+      feature: "Integrated Events",
+      lite: { className: "yes", text: " (limited)" },
+      full: { className: "yes", text: "" },
+    },
+    {
+      feature: "Optimized performance",
+      lite: { className: "yes", text: "" },
+      full: { className: "yes", text: "" },
+    },
+    {
+      feature: "Custom Bossbar",
+      lite: { className: "limited", text: "Limited" },
+      full: { className: "yes", text: "" },
+    },
+    {
+      feature: "Support for gradients and styles",
+      lite: { className: "no", text: "—" },
+      full: { className: "yes", text: "" },
+    },
+    {
+      feature: "Live configuration (no /reload required)",
+      lite: { className: "no", text: "—" },
+      full: { className: "yes", text: "" },
+    },
+    {
+      feature: "API for developers",
+      lite: { className: "no", text: "—" },
+      full: { className: "yes", text: "" },
+    },
+    {
+      feature: "Integration with other plugins",
+      lite: { className: "no", text: "—" },
+      full: { className: "yes", text: "" },
+    },
+    {
+      feature: "Sounds and effects",
+      lite: { className: "no", text: "—" },
+      full: { className: "yes", text: "" },
+    },
+    {
+      feature: "Auto-update",
+      lite: { className: "no", text: "—" },
+      full: { className: "soon", text: "Coming soon" },
+    },
+  ];
+
+  return (
+    <div className="downloads-page">
+      <style>{`
+        .downloads-page {
+          --bg: #0e0b0b;
+          --fg: #f3f3f3;
+          --muted: #b3b3b3;
+          --gray: #686868;
+          --orange: #ea580c;
+          --radius: 16px;
+          --shadow: 0 0 0 1px rgba(255,255,255,0.08);
+          background: var(--bg);
+          color: var(--fg);
+          font-family: Inter, system-ui, sans-serif;
+          line-height: 1.6;
+          padding: 40px 16px;
+          border-radius: 24px;
+          box-shadow: 0 15px 30px rgba(0,0,0,0.35);
+        }
+
+        .downloads-page h1 {
+          text-align: center;
+          font-size: 2rem;
+          font-weight: 800;
+          margin-bottom: 40px;
+          color: var(--fg);
+        }
+
+        .download-alert {
+          max-width: 720px;
+          margin: 0 auto 24px;
+          padding: 12px 16px;
+          border-radius: 12px;
+          background: rgba(234, 88, 12, 0.16);
+          color: var(--fg);
+          border: 1px solid rgba(234, 88, 12, 0.35);
+          text-align: center;
+        }
+
+        .plans {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 24px;
+          max-width: 1000px;
+          margin: 0 auto;
+        }
+
+        .plan {
+          background: #181818;
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: var(--radius);
+          padding: 28px 24px 36px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          transition: transform .2s ease, border .2s ease;
+        }
+
+        .plan.popular {
+          border: 2px solid var(--orange);
+          transform: scale(1.03);
+          position: relative;
+        }
+
+        .plan.popular::before {
+          content: "MOST POPULAR";
+          position: absolute;
+          top: -14px;
+          background: var(--orange);
+          color: #fff;
+          padding: 4px 10px;
+          font-size: 11px;
+          font-weight: 700;
+          border-radius: 999px;
+          letter-spacing: .4px;
+        }
+
+        .plan h2 {
+          font-size: 1.4rem;
+          font-weight: 700;
+          margin-bottom: 12px;
+        }
+
+        .price {
+          font-size: 2rem;
+          font-weight: 800;
+          color: var(--orange);
+          margin-bottom: 4px;
+        }
+
+        .plan small {
+          color: var(--muted);
+          font-size: .9rem;
+          margin-bottom: 18px;
+        }
+
+        .features {
+          text-align: left;
+          width: 100%;
+          margin-top: 12px;
+          color: var(--fg);
+        }
+
+        .features li {
+          list-style: none;
+          margin-bottom: 6px;
+          font-size: .95rem;
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+        }
+
+        .features li::before {
+          content: "";
+          display: inline-block;
+          width: 16px;
+          height: 16px;
+          background-color: var(--orange);
+          mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>') no-repeat center;
+          mask-size: contain;
+          -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>') no-repeat center;
+          -webkit-mask-size: contain;
+          margin-right: 2px;
+          flex-shrink: 0;
+          transform: translateY(6px);
+        }
+
+        .btns {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          margin-top: 20px;
+          gap: 10px;
+        }
+
+        .btn {
+          appearance: none;
+          border: none;
+          border-radius: 8px;
+          font-weight: 700;
+          font-size: .95rem;
+          padding: 10px 18px;
+          cursor: pointer;
+          text-decoration: none;
+          transition: background .2s ease, opacity .2s ease;
+        }
+
+        .btn.primary {
+          background: var(--orange);
+          border-radius: 99px;
+          color: #fff;
+        }
+
+        .btn.external {
+          background: transparent;
+          color: #fff;
+          font-weight: 700;
+          gap: 6px;
+          text-decoration: underline;
+          text-underline-offset: 4px;
+          display: inline-flex;
+          align-items: center;
+        }
+
+        .btn:hover {
+          opacity: 0.9;
+        }
+
+        .version {
+          font-size: .9rem;
+          color: var(--muted);
+          margin-top: 10px;
+        }
+
+        .compare-title{
+          max-width:1000px; margin:28px auto 12px; padding:0 16px;
+          font-size:1.25rem; font-weight:800; color:var(--fg);
+        }
+
+        .table-wrap{
+          max-width:1000px; margin:0 auto; padding:0 16px;
+          overflow-x:auto; -webkit-overflow-scrolling: touch;
+        }
+
+        .feat-table{
+          width:100%; border-collapse: collapse; min-width: 560px;
+          background:#181818; border:1px solid rgba(255,255,255,.1);
+          border-radius:12px; overflow:hidden;
+        }
+
+        .feat-table thead th{
+          text-align:left; font-weight:700; color:var(--muted);
+          padding:14px 16px; font-size:.95rem;
+          border-bottom:1px solid rgba(255,255,255,.08);
+        }
+        .feat-table thead th:not(:first-child){ text-align:center; }
+
+        .feat-table tbody td{
+          padding:14px 16px; border-bottom:1px solid rgba(255,255,255,.06);
+          color:var(--fg); font-size:.95rem; height:44px;
+        }
+        .feat-table tbody tr:last-child td{ border-bottom:0; }
+
+        .feat-table tbody td:not(:first-child){ text-align:center; }
+
+        .feat-table td.yes,
+        .feat-table td.no,
+        .feat-table td.limited,
+        .feat-table td.soon{
+          position:relative;
+        }
+
+        .feat-table td.yes::before{
+          content:"";
+          display:inline-block; width:16px; height:16px;
+          background-color: var(--orange);
+          mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>') no-repeat center;
+          -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>") no-repeat center;
+          mask-size:contain; -webkit-mask-size:contain;
+          vertical-align:middle; transform: translateY(-1px);
+        }
+
+        .feat-table td.no{ color:var(--muted); }
+
+        .feat-table td.limited{ color:var(--fg); opacity:.9; }
+        .feat-table td.soon{ color:var(--muted); font-style:italic; }
+
+        .feat-table tbody tr:hover td{
+          background:#1c1c1c;
+        }
+
+        .downloads-footer {
+          margin-top: 40px;
+          text-align: center;
+          color: var(--gray);
+          font-size: .85rem;
+          max-width: 700px;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        @media (max-width: 640px) {
+          .downloads-page {
+            padding: 28px 12px;
+          }
+        }
+      `}</style>
+
+      <h1>Voiid Countdown — Descargas</h1>
+
+      {hasError && (
+        <div className="download-alert">
+          Ocurrió un error al cargar la información de las versiones. Puedes ver todos los lanzamientos en GitHub.
+        </div>
+      )}
+
+      <div className="plans" id="plans">
+        <Plan
+          title="Lite (Datapack)"
+          description="Compatible con Minecraft Vanilla. Configuración rápida e ideal para servidores simples o un solo jugador."
+          features={[
+            "Compatible with Minecraft Vanilla.",
+            "Quick and easy setup.",
+            "Ideal for simple servers or a single player.",
+          ]}
+          data={liteRelease}
+        />
+
+        <Plan
+          title="Full (Plugin)"
+          description="Plugin para Spigot, Paper o Purpur con más funciones, integraciones externas y soporte extendido."
+          features={[
+            "Plugin para Spigot, Paper o Purpur.",
+            "Más funciones y soporte extendido.",
+            "Integración con APIs externas.",
+            "Actualizaciones frecuentes y soporte completo.",
+          ]}
+          data={fullRelease}
+          popular
+        />
+      </div>
+
+      <section className="compare">
+        <h2 className="compare-title">Características</h2>
+
+        <div className="table-wrap">
+          <table className="feat-table">
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>Lite (Datapack)</th>
+                <th>Full (Plugin)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {featureRows.map((row) => (
+                <FeatureRow key={row.feature} feature={row.feature} lite={row.lite} full={row.full} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <footer className="downloads-footer">
+        Mantente al día con las últimas versiones en nuestro repositorio de GitHub o en las plataformas oficiales como Modrinth, CurseForge, SpigotMC y Hangar.
+      </footer>
+    </div>
+  );
+}
