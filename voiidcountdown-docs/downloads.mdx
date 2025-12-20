@@ -1,0 +1,528 @@
+---
+title: "Downloads"
+description: "Descarga Voiid Countdown en sus ediciones Lite y Full."
+icon: "download"
+mode: "custom"
+---
+
+import { useEffect, useState } from "react";
+
+const API = "https://api.github.com/repos/Voiid-Studios/voiidcountdown/releases?per_page=50";
+const FALLBACK_RELEASES_URL = "https://github.com/Voiid-Studios/voiidcountdown/releases";
+
+const planFeatures = {
+  lite: [
+    "Compatible con Minecraft Vanilla.",
+    "Configuración rápida y sencilla.",
+    "Ideal para servidores simples o un solo jugador.",
+  ],
+  full: [
+    "Plugin para Spigot, Paper o Purpur.",
+    "Más funciones y soporte extendido.",
+    "Integración con APIs externas.",
+    "Actualizaciones frecuentes y soporte completo.",
+  ],
+};
+
+const comparisonRows = [
+  {
+    name: "Compatibility",
+    lite: "Vanilla (1.15+)",
+    full: "Spigot, Paper and forks (1.13+)",
+    state: { lite: "limited", full: "limited" },
+  },
+  { name: "Integrated Events", lite: "(limited)", full: "", state: { lite: "yes", full: "yes" } },
+  { name: "Optimized performance", lite: "", full: "", state: { lite: "yes", full: "yes" } },
+  { name: "Custom Bossbar", lite: "Limited", full: "", state: { lite: "limited", full: "yes" } },
+  { name: "Support for gradients and styles", lite: "—", full: "", state: { lite: "no", full: "yes" } },
+  { name: "Live configuration (no /reload required)", lite: "—", full: "", state: { lite: "no", full: "yes" } },
+  { name: "API for developers", lite: "—", full: "", state: { lite: "no", full: "yes" } },
+  { name: "Integration with other plugins", lite: "—", full: "", state: { lite: "no", full: "yes" } },
+  { name: "Sounds and effects", lite: "—", full: "", state: { lite: "no", full: "yes" } },
+  { name: "Auto-update", lite: "—", full: "Coming soon", state: { lite: "no", full: "soon" } },
+];
+
+function cmpSemver(a, b) {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) > (pb[i] || 0)) return 1;
+    if ((pa[i] || 0) < (pb[i] || 0)) return -1;
+  }
+  return 0;
+}
+
+function formatDate(iso) {
+  try {
+    return new Intl.DateTimeFormat("es-CL", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+function pickAsset(assets) {
+  if (!assets || !assets.length) return null;
+  const preferred = assets.find((asset) => /\.(jar|zip|mcaddon|mcpack)$/i.test(asset.name));
+  return preferred || assets[0];
+}
+
+function findLatest(releases, major) {
+  const filtered = releases.filter((release) => release.tag_name.startsWith(`${major}.`));
+  return filtered.sort((a, b) => cmpSemver(b.tag_name, a.tag_name))[0] || null;
+}
+
+function hydrateRelease(release) {
+  if (!release) {
+    return {
+      versionText: "No release found",
+      metaText: "",
+      downloadUrl: FALLBACK_RELEASES_URL,
+      releaseUrl: FALLBACK_RELEASES_URL,
+      buttonLabel: "Download",
+    };
+  }
+
+  const asset = pickAsset(release.assets);
+  return {
+    versionText: `Version ${release.tag_name}`,
+    metaText: `Published on ${formatDate(release.published_at)} · ${release.assets.length} asset(s)`,
+    downloadUrl: asset ? asset.browser_download_url : release.html_url,
+    releaseUrl: release.html_url,
+    buttonLabel: asset ? "Download" : "View assets",
+  };
+}
+
+const defaultReleaseState = {
+  versionText: "Loading...",
+  metaText: "",
+  downloadUrl: FALLBACK_RELEASES_URL,
+  releaseUrl: FALLBACK_RELEASES_URL,
+  buttonLabel: "Download",
+};
+
+const errorReleaseState = {
+  versionText: "Error",
+  metaText: "",
+  downloadUrl: FALLBACK_RELEASES_URL,
+  releaseUrl: FALLBACK_RELEASES_URL,
+  buttonLabel: "Download",
+};
+
+const ExternalIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="lucide lucide-external-link-icon lucide-external-link"
+  >
+    <path d="M15 3h6v6" />
+    <path d="M10 14 21 3" />
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+  </svg>
+);
+
+const PlanCard = ({ title, features, release, popular }) => (
+  <div className={`plan${popular ? " popular" : ""}`}>
+    <h2>{title}</h2>
+    <div className="price">{release.versionText}</div>
+    <ul className="features">
+      {features.map((feature) => (
+        <li key={feature}>{feature}</li>
+      ))}
+    </ul>
+    <div className="btns">
+      <a className="btn primary" target="_blank" rel="noreferrer" href={release.downloadUrl}>
+        {release.buttonLabel}
+      </a>
+      <a className="btn external" target="_blank" rel="noreferrer" href={release.releaseUrl}>
+        View release
+        <ExternalIcon />
+      </a>
+    </div>
+    <div className="version">{release.metaText}</div>
+  </div>
+);
+
+const FeatureTable = () => (
+  <section className="compare">
+    <h2 className="compare-title">Características</h2>
+    <div className="table-wrap">
+      <table className="feat-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Lite (Datapack)</th>
+            <th>Full (Plugin)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {comparisonRows.map((row) => (
+            <tr key={row.name}>
+              <td>{row.name}</td>
+              <td className={row.state.lite}>{row.lite}</td>
+              <td className={row.state.full}>{row.full}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+);
+
+const DownloadsContent = () => {
+  const [releases, setReleases] = useState({
+    lite: defaultReleaseState,
+    full: defaultReleaseState,
+  });
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function init() {
+      try {
+        const response = await fetch(API, {
+          headers: { Accept: "application/vnd.github+json" },
+        });
+        if (!response.ok) throw new Error(`GitHub API error: ${response.status}`);
+
+        const allReleases = await response.json();
+        const stable = allReleases.filter(
+          (release) => !release.prerelease && !release.draft && /^\d+\.\d+\.\d+$/.test(release.tag_name),
+        );
+
+        const latestLite = findLatest(stable, 1);
+        const latestFull = findLatest(stable, 2);
+
+        if (mounted) {
+          setReleases({
+            lite: hydrateRelease(latestLite),
+            full: hydrateRelease(latestFull),
+          });
+        }
+      } catch (error) {
+        console.error(error);
+        if (mounted) {
+          setReleases({ lite: errorReleaseState, full: errorReleaseState });
+        }
+      }
+    }
+
+    init();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  return (
+    <div className="downloads-page">
+      <h1>Voiid Countdown — Descargas</h1>
+      <div className="plans" id="plans">
+        <PlanCard title="Lite (Datapack)" features={planFeatures.lite} release={releases.lite} />
+        <PlanCard title="Full (Plugin)" features={planFeatures.full} release={releases.full} popular />
+      </div>
+      <FeatureTable />
+
+      <footer>
+        Explora la versión que mejor se adapte a tus necesidades y obtén el paquete adecuado para tu servidor o mapa.
+      </footer>
+
+      <style>{`
+        .downloads-page {
+          --bg: #0e0b0b;
+          --fg: #f3f3f3;
+          --muted: #b3b3b3;
+          --gray: #686868;
+          --orange: #ea580c;
+          --radius: 16px;
+          --shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+          background: var(--bg);
+          color: var(--fg);
+          font-family: Inter, system-ui, sans-serif;
+          line-height: 1.6;
+          padding: 40px 16px;
+          border-radius: 24px;
+          box-shadow: var(--shadow);
+          margin-top: 24px;
+        }
+
+        .downloads-page * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+
+        .downloads-page h1 {
+          text-align: center;
+          font-size: 2rem;
+          font-weight: 800;
+          margin-bottom: 40px;
+          color: var(--fg);
+        }
+
+        .plans {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 24px;
+          max-width: 1000px;
+          margin: 0 auto;
+        }
+
+        .plan {
+          background: #181818;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: var(--radius);
+          padding: 28px 24px 36px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          transition: transform 0.2s ease, border 0.2s ease;
+        }
+
+        .plan.popular {
+          border: 2px solid var(--orange);
+          transform: scale(1.03);
+          position: relative;
+        }
+
+        .plan.popular::before {
+          content: "MOST POPULAR";
+          position: absolute;
+          top: -14px;
+          background: var(--orange);
+          color: #fff;
+          padding: 4px 10px;
+          font-size: 11px;
+          font-weight: 700;
+          border-radius: 999px;
+          letter-spacing: 0.4px;
+        }
+
+        .plan h2 {
+          font-size: 1.4rem;
+          font-weight: 700;
+          margin-bottom: 12px;
+        }
+
+        .price {
+          font-size: 2rem;
+          font-weight: 800;
+          color: var(--orange);
+          margin-bottom: 4px;
+        }
+
+        .plan small {
+          color: var(--muted);
+          font-size: 0.9rem;
+          margin-bottom: 18px;
+        }
+
+        .features {
+          text-align: left;
+          width: 100%;
+          margin-top: 12px;
+          color: var(--fg);
+        }
+
+        .features li {
+          list-style: none;
+          margin-bottom: 6px;
+          font-size: 0.95rem;
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+        }
+
+        .features li::before {
+          content: "";
+          display: inline-block;
+          width: 16px;
+          height: 16px;
+          background-color: var(--orange);
+          mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>') no-repeat center;
+          -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>') no-repeat center;
+          mask-size: contain;
+          -webkit-mask-size: contain;
+          margin-right: 2px;
+          flex-shrink: 0;
+          transform: translateY(6px);
+        }
+
+        .btns {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          margin-top: 20px;
+          gap: 12px;
+        }
+
+        .btn {
+          appearance: none;
+          border: none;
+          border-radius: 8px;
+          font-weight: 700;
+          font-size: 0.95rem;
+          padding: 10px 18px;
+          cursor: pointer;
+          text-decoration: none;
+          transition: background 0.2s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .btn.primary {
+          background: var(--orange);
+          border-radius: 99px;
+          color: #fff;
+        }
+
+        .btn.external {
+          background: transparent;
+          color: #fff;
+          font-weight: 700;
+          text-decoration: underline;
+          text-underline-offset: 4px;
+        }
+
+        .btn:hover {
+          opacity: 0.9;
+        }
+
+        .version {
+          font-size: 0.9rem;
+          color: var(--muted);
+          margin-top: 10px;
+        }
+
+        .compare-title {
+          max-width: 1000px;
+          margin: 28px auto 12px;
+          padding: 0 16px;
+          font-size: 1.25rem;
+          font-weight: 800;
+          color: var(--fg);
+        }
+
+        .table-wrap {
+          max-width: 1000px;
+          margin: 0 auto;
+          padding: 0 16px;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .feat-table {
+          width: 100%;
+          border-collapse: collapse;
+          min-width: 560px;
+          background: #181818;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          overflow: hidden;
+        }
+
+        .feat-table thead th {
+          text-align: left;
+          font-weight: 700;
+          color: var(--muted);
+          padding: 14px 16px;
+          font-size: 0.95rem;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .feat-table thead th:not(:first-child) {
+          text-align: center;
+        }
+
+        .feat-table tbody td {
+          padding: 14px 16px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+          color: var(--fg);
+          font-size: 0.95rem;
+          height: 44px;
+        }
+
+        .feat-table tbody tr:last-child td {
+          border-bottom: 0;
+        }
+
+        .feat-table tbody td:not(:first-child) {
+          text-align: center;
+        }
+
+        .feat-table td.yes::before,
+        .feat-table td.no::before,
+        .feat-table td.limited::before,
+        .feat-table td.soon::before {
+          position: relative;
+        }
+
+        .feat-table td.yes::before {
+          content: "";
+          display: inline-block;
+          width: 16px;
+          height: 16px;
+          background-color: var(--orange);
+          mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>') no-repeat center;
+          -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>") no-repeat center;
+          mask-size: contain;
+          -webkit-mask-size: contain;
+          vertical-align: middle;
+          transform: translateY(-1px);
+          margin-right: 6px;
+        }
+
+        .feat-table td.no {
+          color: var(--muted);
+        }
+
+        .feat-table td.limited {
+          color: var(--fg);
+          opacity: 0.9;
+        }
+
+        .feat-table td.soon {
+          color: var(--muted);
+          font-style: italic;
+        }
+
+        .feat-table tbody tr:hover td {
+          background: #1c1c1c;
+        }
+
+        footer {
+          margin-top: 40px;
+          text-align: center;
+          color: var(--gray);
+          font-size: 0.8rem;
+          max-width: 700px;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        .downloads-page code {
+          font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+          color: #ccc;
+        }
+
+        @media (max-width: 640px) {
+          .downloads-page {
+            padding: 32px 12px;
+          }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+<DownloadsContent />
