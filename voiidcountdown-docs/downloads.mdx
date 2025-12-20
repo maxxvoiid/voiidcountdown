@@ -59,12 +59,12 @@ const hydrateRelease = (release) => {
   }
 
   const asset = pickAsset(release.assets);
+  const assetsCount =
+    release && Array.isArray(release.assets) ? release.assets.length : 0;
 
   return {
     versionText: `Versión ${release.tag_name}`,
-    meta: `Publicado el ${formatDate(release.published_at)} · ${
-      release.assets?.length ?? 0
-    } archivo(s)`,
+    meta: `Publicado el ${formatDate(release.published_at)} · ${assetsCount} archivo(s)`,
     downloadUrl: asset ? asset.browser_download_url : release.html_url,
     releaseUrl: release.html_url,
     downloadLabel: asset ? "Descargar" : "Ver assets",
