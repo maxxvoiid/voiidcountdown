@@ -1,0 +1,609 @@
+---
+title: "Downloads"
+description: "Download Voiid Countdown Timer as a datapack or plugin, depending on what you need."
+icon: "download"
+mode: "custom"
+---
+
+import { useEffect, useState } from "react";
+
+export const API = "https://api.github.com/repos/Voiid-Studios/voiidcountdown/releases?per_page=50";
+export const DEFAULT_RELEASE_URL = "https://github.com/Voiid-Studios/voiidcountdown/releases";
+
+export const initialState = {
+  versionText: "...",
+  meta: "",
+  downloadUrl: DEFAULT_RELEASE_URL,
+  releaseUrl: DEFAULT_RELEASE_URL,
+  downloadLabel: "Download",
+};
+
+export const cmpSemver = (a, b) => {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) > (pb[i] || 0)) return 1;
+    if ((pa[i] || 0) < (pb[i] || 0)) return -1;
+  }
+  return 0;
+};
+
+export const formatDate = (iso) => {
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(iso));
+  } catch (err) {
+    return iso;
+  }
+};
+
+export const pickAsset = (assets) => {
+  if (!assets || !assets.length) return null;
+  const preferred = assets.find((asset) =>
+    /\.(jar|zip|mcaddon|mcpack)$/i.test(asset.name)
+  );
+  return preferred || assets[0];
+};
+
+export const hydrateRelease = (release) => {
+  if (!release) {
+    return {
+      versionText: "No version found",
+      meta: "Check out all releases on GitHub.",
+      downloadUrl: DEFAULT_RELEASE_URL,
+      releaseUrl: DEFAULT_RELEASE_URL,
+      downloadLabel: "View releases",
+    };
+  }
+
+  const asset = pickAsset(release.assets);
+  const assetsCount =
+    release && Array.isArray(release.assets) ? release.assets.length : 0;
+
+  return {
+    versionText: `Version ${release.tag_name}`,
+    meta: `Published on ${formatDate(release.published_at)}`,
+    downloadUrl: asset ? asset.browser_download_url : release.html_url,
+    releaseUrl: release.html_url,
+    downloadLabel: asset ? "Download" : "View assets",
+  };
+};
+
+export default function Downloads() {
+  const [lite, setLite] = useState(initialState);
+  const [full, setFull] = useState(initialState);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const res = await fetch(API, {
+          headers: { Accept: "application/vnd.github+json" },
+        });
+        if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+
+        const releases = await res.json();
+        const stable = releases.filter(
+          (release) =>
+            !release.prerelease &&
+            !release.draft &&
+            /^\d+\.\d+\.\d+$/.test(release.tag_name)
+        );
+
+        const byMajor = { 1: [], 2: [] };
+        for (const release of stable) {
+          const major = parseInt(release.tag_name.split(".")[0], 10);
+          if (major === 1) byMajor[1].push(release);
+          if (major === 2) byMajor[2].push(release);
+        }
+
+        const pickLatest = (list) =>
+          list.sort((a, b) => cmpSemver(b.tag_name, a.tag_name))[0] || null;
+
+        const latestLite = pickLatest(byMajor[1]);
+        const latestFull = pickLatest(byMajor[2]);
+
+        if (!cancelled) {
+          setLite(hydrateRelease(latestLite));
+          setFull(hydrateRelease(latestFull));
+        }
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) {
+          setLite((prev) => ({
+            ...prev,
+            versionText: "Error loading",
+            meta: "We were unable to obtain the versions. Please try again.",
+          }));
+          setFull((prev) => ({
+            ...prev,
+            versionText: "Error loading",
+            meta: "We were unable to obtain the versions. Please try again.",
+          }));
+        }
+      }
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <div className="downloads-page">
+      <style>{`
+        .downloads-page {
+          --bg: #0e0b0b;
+          --fg: #f3f3f3;
+          --muted: #b3b3b3;
+          --gray: #686868;
+          --orange: #ea580c;
+          --radius: 16px;
+          color: var(--fg);
+          line-height: 1.6;
+          padding: 40px 16px 56px;
+        }
+
+        .plans {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 24px;
+          max-width: 1000px;
+          margin: 0 auto;
+        }
+
+        .plan {
+          background: #181818;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: var(--radius);
+          padding: 28px 24px 36px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          transition: transform 0.2s ease, border 0.2s ease;
+        }
+
+        .plan.popular {
+          border: 2px solid var(--orange);
+          transform: scale(1.03);
+          position: relative;
+        }
+
+        .plan.popular::before {
+          content: "MOST POPULAR";
+          position: absolute;
+          top: -14px;
+          background: var(--orange);
+          color: #fff;
+          padding: 4px 10px;
+          font-size: 11px;
+          font-weight: 700;
+          border-radius: 999px;
+          letter-spacing: 0.4px;
+        }
+
+        .plan h2 {
+          font-size: 1.4rem;
+          margin-bottom: 12px;
+        }
+
+        .price {
+          font-size: 2rem;
+          font-weight: 800;
+          color: var(--orange);
+          margin-bottom: 4px;
+        }
+
+        .plan small {
+          color: var(--muted);
+          font-size: 0.9rem;
+          margin-bottom: 18px;
+        }
+
+        .features {
+          text-align: left;
+          flex: 1 1 auto;
+          width: 100%;
+          margin-top: 12px;
+          color: var(--fg);
+        }
+
+        .features li {
+          list-style: none;
+          margin-bottom: 6px;
+          font-size: 0.95rem;
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+        }
+
+        .features li::before {
+          content: "";
+          display: inline-block;
+          width: 16px;
+          height: 16px;
+          background-color: var(--orange);
+          mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>") no-repeat center;
+          -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>") no-repeat center;
+          mask-size: contain;
+          -webkit-mask-size: contain;
+          margin-right: 2px;
+          flex-shrink: 0;
+          transform: translateY(6px);
+        }
+
+        .btns {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          margin-top: auto;
+          padding-top: 20px;
+          gap: 8px;
+        }
+
+        .btn {
+          appearance: none;
+          border: none;
+          border-radius: 8px;
+          font-weight: 700;
+          font-size: 0.95rem;
+          padding: 10px 18px;
+          cursor: pointer;
+          text-decoration: none;
+          transition: background 0.2s ease;
+        }
+
+        .btn.primary {
+          background: var(--orange);
+          border-radius: 99px;
+          color: #fff;
+        }
+
+        .btn.external {
+          background: transparent;
+          color: #fff;
+          font-weight: 700;
+          gap: 6px;
+          text-decoration: underline;
+          text-underline-offset: 4px;
+          display: inline-flex;
+          align-items: center;
+        }
+
+        .btn:hover {
+          opacity: 0.9;
+        }
+
+        .version {
+          font-size: 0.9rem;
+          color: var(--muted);
+          margin-top: 10px;
+        }
+
+        .compare-title {
+          max-width: 1000px;
+          margin: 36px auto 12px;
+          padding: 0 16px;
+          font-size: 1.25rem;
+          color: var(--fg);
+        }
+
+        .table-wrap {
+          max-width: 1000px;
+          margin: 0 auto;
+          padding: 0 16px;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .feat-table {
+          width: 103.25%;
+          border-collapse: collapse;
+          min-width: 560px;
+          background: #181818;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          overflow: hidden;
+        }
+
+        .feat-table thead th {
+          text-align: left;
+          color: var(--muted);
+          padding: 14px 16px;
+          font-size: 0.95rem;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .feat-table thead th:not(:first-child) {
+          text-align: center;
+        }
+
+        .feat-table tbody td {
+          padding: 14px 16px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+          color: var(--fg);
+          font-size: 0.95rem;
+          height: 44px;
+        }
+
+        .feat-table tbody tr:last-child td {
+          border-bottom: 0;
+        }
+
+        .feat-table tbody td:not(:first-child) {
+          text-align: center;
+        }
+
+        .feat-table td.yes::before,
+        .feat-table td.no::before,
+        .feat-table td.limited::before,
+        .feat-table td.soon::before {
+          position: relative;
+        }
+
+        .feat-table td.yes::before {
+          content: "";
+          display: inline-block;
+          width: 16px;
+          height: 16px;
+          background-color: var(--orange);
+          mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>") no-repeat center;
+          -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>") no-repeat center;
+          mask-size: contain;
+          -webkit-mask-size: contain;
+          vertical-align: middle;
+          transform: translateY(-1px);
+        }
+
+        .feat-table td.no {
+          color: var(--muted);
+        }
+
+        .feat-table td.limited {
+          color: var(--fg);
+          opacity: 0.9;
+        }
+
+        .feat-table td.soon {
+          color: var(--muted);
+          font-style: italic;
+        }
+
+        .feat-table tbody tr:hover td {
+          background: #1c1c1c;
+        }
+
+        @media (max-width: 640px) {
+          .downloads-page {
+            padding: 28px 12px 40px;
+          }
+
+          .plan.popular {
+            transform: none;
+          }
+        }
+      `}</style>
+
+      <div className="absolute top-0 lg:-top-16 left-0 right-0 pointer-events-none -z-10">
+        <img
+          src="/images/introduction/background.png"
+          className="block"
+        />
+      </div>
+
+      <div className="px-4 py-14 lg:py-14 lg:pb-8 max-w-3xl mx-auto">
+        <h1 className="block text-4xl font-medium text-center text-gray-900 dark:text-zinc-50 tracking-tight">
+          Download Voiid Countdown Timer
+        </h1>
+
+        <div className="max-w-xl mx-auto px-4 mt-4 text-lg text-center text-gray-500 dark:text-zinc-500">
+          Choose Lite or Full depending on what you need.
+        </div>
+      </div>
+
+      <div className="plans" id="plans">
+        <div className="plan">
+          <h2>Lite (Datapack)</h2>
+          <div className="price" id="lite-version">
+            {lite.versionText}
+          </div>
+          <ul className="features">
+            <li>Compatible with Minecraft Vanilla.</li>
+            <li>Quick and easy setup.</li>
+            <li>Ideal for simple servers or single players.</li>
+          </ul>
+          <div className="btns">
+            <a
+              id="lite-download"
+              className="btn primary"
+              href={lite.downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {lite.downloadLabel}
+            </a>
+            <a
+              id="lite-release"
+              className="btn external"
+              href={lite.releaseUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View release
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="lucide lucide-external-link"
+              >
+                <path d="M15 3h6v6" />
+                <path d="M10 14 21 3" />
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              </svg>
+            </a>
+          </div>
+          <div className="version" id="lite-meta">
+            {lite.meta}
+          </div>
+        </div>
+
+        <div className="plan popular">
+          <h2>Full (Plugin)</h2>
+          <div className="price" id="full-version">
+            {full.versionText}
+          </div>
+          <ul className="features">
+            <li>Plugin for Spigot, Paper and forks.</li>
+            <li>Many more features and extended support.</li>
+            <li>Integration with external APIs.</li>
+            <li>Frequent updates and full support.</li>
+          </ul>
+          <div className="btns">
+            <a
+              id="full-download"
+              className="btn primary"
+              href={full.downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {full.downloadLabel}
+            </a>
+            <a
+              id="full-release"
+              className="btn external"
+              href={full.releaseUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View release
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="lucide lucide-external-link"
+              >
+                <path d="M15 3h6v6" />
+                <path d="M10 14 21 3" />
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              </svg>
+            </a>
+          </div>
+          <div className="version" id="full-meta">
+            {full.meta}
+          </div>
+        </div>
+      </div>
+
+      <section className="compare">
+        <h2 className="compare-title">Not sure which one is best? Check out the features</h2>
+
+        <div className="table-wrap">
+          <table className="feat-table">
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>Lite (Datapack)</th>
+                <th>Full (Plugin)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Compatibility</td>
+                <td className="limited">Vanilla (1.15+)</td>
+                <td className="limited">Spigot, Paper and forks (1.13+)</td>
+              </tr>
+              <tr>
+                <td>In-game configuration book</td>
+                <td className="yes"></td>
+                <td className="no">—</td>
+              </tr>
+              <tr>
+                <td>Progress bar in bossbar</td>
+                <td className="yes"></td>
+                <td className="yes"></td>
+              </tr>
+              <tr>
+                <td>Custom Bossbar</td>
+                <td className="limited">Limited</td>
+                <td className="yes"></td>
+              </tr>
+              <tr>
+                <td>Integrated Events</td>
+                <td className="yes"> (limited)</td>
+                <td className="yes"></td>
+              </tr>
+              <tr>
+                <td>Change language</td>
+                <td className="yes"> (limited)</td>
+                <td className="yes"></td>
+              </tr>
+              <tr>
+                <td>Optimized performance</td>
+                <td className="yes"></td>
+                <td className="yes"></td>
+              </tr>
+              <tr>
+                <td>Support for gradients and styles</td>
+                <td className="limited">Only styles</td>
+                <td className="yes"></td>
+              </tr>
+              <tr>
+                <td>Multiple timer profiles</td>
+                <td className="no">—</td>
+                <td className="yes"></td>
+              </tr>
+              <tr>
+                <td>Live configuration (no /reload required)</td>
+                <td className="no">—</td>
+                <td className="yes"></td>
+              </tr>
+              <tr>
+                <td>API for developers</td>
+                <td className="no">—</td>
+                <td className="yes"></td>
+              </tr>
+              <tr>
+                <td>Integration with other plugins</td>
+                <td className="no">—</td>
+                <td className="yes"></td>
+              </tr>
+              <tr>
+                <td>Expansions</td>
+                <td className="no">—</td>
+                <td className="yes"></td>
+              </tr>
+              <tr>
+                <td>Auto-update</td>
+                <td className="no">—</td>
+                <td className="soon">Coming soon</td>
+              </tr>
+              <tr>
+                <td>State persistence between restarts</td>
+                <td className="no">—</td>
+                <td className="yes"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}
