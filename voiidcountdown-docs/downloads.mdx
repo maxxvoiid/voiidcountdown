@@ -1,24 +1,24 @@
 ---
-title: "Descargas"
-description: "Descarga Voiid Countdown como datapack o plugin, según lo que necesites."
+title: "Downloads"
+description: "Download Voiid Countdown Timer as a datapack or plugin, depending on what you need."
 icon: "download"
 mode: "custom"
 ---
 
 import { useEffect, useState } from "react";
 
-const API = "https://api.github.com/repos/Voiid-Studios/voiidcountdown/releases?per_page=50";
-const DEFAULT_RELEASE_URL = "https://github.com/Voiid-Studios/voiidcountdown/releases";
+export const API = "https://api.github.com/repos/Voiid-Studios/voiidcountdown/releases?per_page=50";
+export const DEFAULT_RELEASE_URL = "https://github.com/Voiid-Studios/voiidcountdown/releases";
 
-const initialState = {
-  versionText: "Cargando...",
+export const initialState = {
+  versionText: "...",
   meta: "",
   downloadUrl: DEFAULT_RELEASE_URL,
   releaseUrl: DEFAULT_RELEASE_URL,
   downloadLabel: "Download",
 };
 
-const cmpSemver = (a, b) => {
+export const cmpSemver = (a, b) => {
   const pa = a.split(".").map(Number);
   const pb = b.split(".").map(Number);
   for (let i = 0; i < 3; i++) {
@@ -28,9 +28,9 @@ const cmpSemver = (a, b) => {
   return 0;
 };
 
-const formatDate = (iso) => {
+export const formatDate = (iso) => {
   try {
-    return new Intl.DateTimeFormat("es-CL", {
+    return new Intl.DateTimeFormat("en-US", {
       dateStyle: "medium",
       timeStyle: "short",
     }).format(new Date(iso));
@@ -39,7 +39,7 @@ const formatDate = (iso) => {
   }
 };
 
-const pickAsset = (assets) => {
+export const pickAsset = (assets) => {
   if (!assets || !assets.length) return null;
   const preferred = assets.find((asset) =>
     /\.(jar|zip|mcaddon|mcpack)$/i.test(asset.name)
@@ -47,14 +47,14 @@ const pickAsset = (assets) => {
   return preferred || assets[0];
 };
 
-const hydrateRelease = (release) => {
+export const hydrateRelease = (release) => {
   if (!release) {
     return {
-      versionText: "No se encontró una versión",
-      meta: "Revisa todas las publicaciones en GitHub.",
+      versionText: "No version found",
+      meta: "Check out all releases on GitHub.",
       downloadUrl: DEFAULT_RELEASE_URL,
       releaseUrl: DEFAULT_RELEASE_URL,
-      downloadLabel: "Ver publicaciones",
+      downloadLabel: "View releases",
     };
   }
 
@@ -63,15 +63,15 @@ const hydrateRelease = (release) => {
     release && Array.isArray(release.assets) ? release.assets.length : 0;
 
   return {
-    versionText: `Versión ${release.tag_name}`,
-    meta: `Publicado el ${formatDate(release.published_at)} · ${assetsCount} archivo(s)`,
+    versionText: `Version ${release.tag_name}`,
+    meta: `Published on ${formatDate(release.published_at)}`,
     downloadUrl: asset ? asset.browser_download_url : release.html_url,
     releaseUrl: release.html_url,
-    downloadLabel: asset ? "Descargar" : "Ver assets",
+    downloadLabel: asset ? "Download" : "View assets",
   };
 };
 
-const Downloads = () => {
+export default function Downloads() {
   const [lite, setLite] = useState(initialState);
   const [full, setFull] = useState(initialState);
 
@@ -115,13 +115,13 @@ const Downloads = () => {
         if (!cancelled) {
           setLite((prev) => ({
             ...prev,
-            versionText: "Error al cargar",
-            meta: "No pudimos obtener las versiones. Intenta nuevamente.",
+            versionText: "Error loading",
+            meta: "We were unable to obtain the versions. Please try again.",
           }));
           setFull((prev) => ({
             ...prev,
-            versionText: "Error al cargar",
-            meta: "No pudimos obtener las versiones. Intenta nuevamente.",
+            versionText: "Error loading",
+            meta: "We were unable to obtain the versions. Please try again.",
           }));
         }
       }
@@ -144,22 +144,9 @@ const Downloads = () => {
           --gray: #686868;
           --orange: #ea580c;
           --radius: 16px;
-          background: var(--bg);
           color: var(--fg);
-          font-family: Inter, system-ui, sans-serif;
           line-height: 1.6;
           padding: 40px 16px 56px;
-          border-radius: 28px;
-          box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
-          border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .downloads-page h1 {
-          text-align: center;
-          font-size: 2rem;
-          font-weight: 800;
-          margin-bottom: 40px;
-          color: var(--fg);
         }
 
         .plans {
@@ -203,7 +190,6 @@ const Downloads = () => {
 
         .plan h2 {
           font-size: 1.4rem;
-          font-weight: 700;
           margin-bottom: 12px;
         }
 
@@ -222,6 +208,7 @@ const Downloads = () => {
 
         .features {
           text-align: left;
+          flex: 1 1 auto;
           width: 100%;
           margin-top: 12px;
           color: var(--fg);
@@ -255,7 +242,8 @@ const Downloads = () => {
           display: flex;
           flex-wrap: wrap;
           justify-content: center;
-          margin-top: 20px;
+          margin-top: auto;
+          padding-top: 20px;
           gap: 8px;
         }
 
@@ -303,7 +291,6 @@ const Downloads = () => {
           margin: 36px auto 12px;
           padding: 0 16px;
           font-size: 1.25rem;
-          font-weight: 800;
           color: var(--fg);
         }
 
@@ -316,7 +303,7 @@ const Downloads = () => {
         }
 
         .feat-table {
-          width: 100%;
+          width: 103.25%;
           border-collapse: collapse;
           min-width: 560px;
           background: #181818;
@@ -327,7 +314,6 @@ const Downloads = () => {
 
         .feat-table thead th {
           text-align: left;
-          font-weight: 700;
           color: var(--muted);
           padding: 14px 16px;
           font-size: 0.95rem;
@@ -404,7 +390,22 @@ const Downloads = () => {
         }
       `}</style>
 
-      <h1>Voiid Countdown — Descargas</h1>
+      <div className="absolute top-0 lg:-top-16 left-0 right-0 pointer-events-none -z-10">
+        <img
+          src="/images/introduction/background.png"
+          className="block"
+        />
+      </div>
+
+      <div className="px-4 py-14 lg:py-14 lg:pb-8 max-w-3xl mx-auto">
+        <h1 className="block text-4xl font-medium text-center text-gray-900 dark:text-zinc-50 tracking-tight">
+          Download Voiid Countdown Timer
+        </h1>
+
+        <div className="max-w-xl mx-auto px-4 mt-4 text-lg text-center text-gray-500 dark:text-zinc-500">
+          Choose Lite or Full depending on what you need.
+        </div>
+      </div>
 
       <div className="plans" id="plans">
         <div className="plan">
@@ -413,9 +414,9 @@ const Downloads = () => {
             {lite.versionText}
           </div>
           <ul className="features">
-            <li>Compatible con Minecraft Vanilla.</li>
-            <li>Configuración rápida y sencilla.</li>
-            <li>Ideal para servidores simples o un jugador.</li>
+            <li>Compatible with Minecraft Vanilla.</li>
+            <li>Quick and easy setup.</li>
+            <li>Ideal for simple servers or single players.</li>
           </ul>
           <div className="btns">
             <a
@@ -434,7 +435,7 @@ const Downloads = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Ver release
+              View release
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="14"
@@ -464,10 +465,10 @@ const Downloads = () => {
             {full.versionText}
           </div>
           <ul className="features">
-            <li>Plugin para Spigot, Paper o Purpur.</li>
-            <li>Más funciones y soporte extendido.</li>
-            <li>Integración con APIs externas.</li>
-            <li>Actualizaciones frecuentes y soporte completo.</li>
+            <li>Plugin for Spigot, Paper and forks.</li>
+            <li>Many more features and extended support.</li>
+            <li>Integration with external APIs.</li>
+            <li>Frequent updates and full support.</li>
           </ul>
           <div className="btns">
             <a
@@ -486,7 +487,7 @@ const Downloads = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Ver release
+              View release
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="14"
@@ -512,7 +513,7 @@ const Downloads = () => {
       </div>
 
       <section className="compare">
-        <h2 className="compare-title">Características</h2>
+        <h2 className="compare-title">Not sure which one is best? Check out the features</h2>
 
         <div className="table-wrap">
           <table className="feat-table">
@@ -530,12 +531,12 @@ const Downloads = () => {
                 <td className="limited">Spigot, Paper and forks (1.13+)</td>
               </tr>
               <tr>
-                <td>Integrated Events</td>
-                <td className="yes"> (limited)</td>
+                <td>In-game configuration book</td>
                 <td className="yes"></td>
+                <td className="no">—</td>
               </tr>
               <tr>
-                <td>Optimized performance</td>
+                <td>Progress bar in bossbar</td>
                 <td className="yes"></td>
                 <td className="yes"></td>
               </tr>
@@ -545,7 +546,27 @@ const Downloads = () => {
                 <td className="yes"></td>
               </tr>
               <tr>
+                <td>Integrated Events</td>
+                <td className="yes"> (limited)</td>
+                <td className="yes"></td>
+              </tr>
+              <tr>
+                <td>Change language</td>
+                <td className="yes"> (limited)</td>
+                <td className="yes"></td>
+              </tr>
+              <tr>
+                <td>Optimized performance</td>
+                <td className="yes"></td>
+                <td className="yes"></td>
+              </tr>
+              <tr>
                 <td>Support for gradients and styles</td>
+                <td className="limited">Only styles</td>
+                <td className="yes"></td>
+              </tr>
+              <tr>
+                <td>Multiple timer profiles</td>
                 <td className="no">—</td>
                 <td className="yes"></td>
               </tr>
@@ -565,7 +586,7 @@ const Downloads = () => {
                 <td className="yes"></td>
               </tr>
               <tr>
-                <td>Sounds and effects</td>
+                <td>Expansions</td>
                 <td className="no">—</td>
                 <td className="yes"></td>
               </tr>
@@ -574,12 +595,15 @@ const Downloads = () => {
                 <td className="no">—</td>
                 <td className="soon">Coming soon</td>
               </tr>
+              <tr>
+                <td>State persistence between restarts</td>
+                <td className="no">—</td>
+                <td className="yes"></td>
+              </tr>
             </tbody>
           </table>
         </div>
       </section>
     </div>
   );
-};
-
-<Downloads />
+}

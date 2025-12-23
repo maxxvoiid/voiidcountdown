@@ -18,15 +18,10 @@
         "icon": "book",
         "groups": [
           {
-            "group": "Downloads",
-            "pages": [
-              "downloads"
-            ]
-          },
-          {
             "group": "Get Started",
             "pages": [
               "index",
+              "downloads",
               "get-started/quick-overview",
               "get-started/installation-or-updation"
             ]
