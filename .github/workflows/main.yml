@@ -27,7 +27,7 @@ jobs:
       - name: Upload Plugin Jar
         uses: actions/upload-artifact@v4
         with:
-          name: voiidcountdown-plugin
+          name: voiidcountdown-full
           path: voiidcountdown-plugin/target/*.jar
 
   buildDatapack:
@@ -39,10 +39,10 @@ jobs:
       - name: Zip Datapack
         run: |
           cd voiidcountdown-datapack
-          zip -r ../voiidcountdown-datapack.zip .
+          zip -r ../voiidcountdown-lite.zip .
 
       - name: Upload Datapack Zip
         uses: actions/upload-artifact@v4
         with:
-          name: voiidcountdown-datapack
-          path: voiidcountdown-datapack.zip
+          name: voiidcountdown-lite
+          path: voiidcountdown-lite.zip
