@@ -1,5 +1,5 @@
 ---
-title: "Downloads"
+title: "Download"
 description: "Download Voiid Countdown Timer as a datapack or plugin, depending on what you need."
 icon: "download"
 mode: "custom"
@@ -47,6 +47,21 @@ export const pickAsset = (assets) => {
   return preferred || assets[0];
 };
 
+export const formatBytes = (bytes) => {
+  if (!bytes && bytes !== 0) return "";
+
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let size = bytes;
+  let unitIndex = 0;
+
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+
+  return `${size.toFixed(size < 10 ? 2 : 1)} ${units[unitIndex]}`;
+};
+
 export const hydrateRelease = (release) => {
   if (!release) {
     return {
@@ -67,7 +82,7 @@ export const hydrateRelease = (release) => {
     meta: `Published on ${formatDate(release.published_at)}`,
     downloadUrl: asset ? asset.browser_download_url : release.html_url,
     releaseUrl: release.html_url,
-    downloadLabel: asset ? "Download" : "View assets",
+    downloadLabel: asset ? `Download (${formatBytes(asset.size)})` : "View assets",
   };
 };
 
@@ -465,7 +480,7 @@ export default function Downloads() {
             {full.versionText}
           </div>
           <ul className="features">
-            <li>Plugin for Spigot, Paper and forks.</li>
+            <li>Compatible with Spigot, Paper and forks.</li>
             <li>Many more features and extended support.</li>
             <li>Integration with external APIs.</li>
             <li>Frequent updates and full support.</li>
@@ -593,7 +608,7 @@ export default function Downloads() {
               <tr>
                 <td>Auto-update</td>
                 <td className="no">—</td>
-                <td className="soon">Coming soon</td>
+                <td className="yes"></td>
               </tr>
               <tr>
                 <td>State persistence between restarts</td>

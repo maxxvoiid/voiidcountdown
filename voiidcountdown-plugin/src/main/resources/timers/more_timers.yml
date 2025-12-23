@@ -1,5 +1,6 @@
 Timers:
   timer_2:
+    format: "COUNTDOWN"
     text: "<blue>I'm the Timer 2 :D (%M1% %M2% : %S1% %S2%)</blue>"
     sound: UI_BUTTON_CLICK
     sound_volume: 0.5
@@ -10,6 +11,7 @@ Timers:
     sound_enabled: true
 
   timer_3:
+    format: "COUNTDOWN"
     text: "<rainbow>I'm the Timer 3 :D &l(%HH%:%MM%:%SS%)</rainbow>"
     sound: UI_BUTTON_CLICK
     sound_volume: 0.15

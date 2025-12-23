@@ -21,7 +21,7 @@
             "group": "Get Started",
             "pages": [
               "index",
-              "downloads",
+              "download",
               "get-started/quick-overview",
               "get-started/installation-or-updation"
             ]
