@@ -4,18 +4,19 @@ import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import voiidstudios.vct.api.Metrics;
 import voiidstudios.vct.api.PAPIExpansion;
-import voiidstudios.vct.api.update.UpdateChecker;
 import voiidstudios.vct.api.update.UpdateCheckerResult;
 import voiidstudios.vct.api.update.UpdateDownloaderGithub;
-import voiidstudios.vct.commands.MainCommand;
 import voiidstudios.vct.configs.ConfigsManager;
-import voiidstudios.vct.configs.MainConfigManager;
+import voiidstudios.vct.core.CommandRegistrar;
+import voiidstudios.vct.core.ListenerRegistrar;
+import voiidstudios.vct.core.PluginBootstrap;
+import voiidstudios.vct.core.PluginShutdown;
 import voiidstudios.vct.expansions.ExpansionManager;
-import voiidstudios.vct.listeners.PlayerListener;
 import voiidstudios.vct.managers.DependencyManager;
 import voiidstudios.vct.managers.DynamicsManager;
 import voiidstudios.vct.managers.MessagesManager;
 import voiidstudios.vct.managers.TimerStateManager;
+import voiidstudios.vct.services.UpdateService;
 import voiidstudios.vct.utils.ServerCompatibility;
 import voiidstudios.vct.utils.ServerVersion;
 
@@ -32,7 +33,7 @@ public final class VoiidCountdownTimer extends JavaPlugin {
 
     public static ServerVersion serverVersion;
     private static VoiidCountdownTimer instance;
-    private UpdateChecker updateChecker;
+    private UpdateService updateService;
     private static ConfigsManager configsManager;
     private static DynamicsManager dynamicsManager;
     private static MessagesManager messagesManager;
@@ -42,82 +43,11 @@ public final class VoiidCountdownTimer extends JavaPlugin {
 
     public void onEnable() {
         instance = this;
-
-        if (Boolean.getBoolean(VCT_LOADED_PROPERTY)) {
-            sendConsoleUnstableReloadMessage();
-        } else {
-            System.setProperty(VCT_LOADED_PROPERTY, "true");
-        }
-
-        configsManager = new ConfigsManager(this);
-        configsManager.configure();
-
-        if (configsManager.getMainConfigManager().getConfig().contains("Messages")) {
-            sendConsoleLegacyMessagesConfigMessage();
-        }
-
-        messagesManager = new MessagesManager(this);
-        MessagesManager.setPrefix(prefix);
-        messagesManager.loadLanguage(
-                configsManager.getMainConfigManager().getLanguage()
-        );
-
-        messagesManager.debug("&bDebug mode enabled, you will see many debug messages only on your server console! ;)");
-        
-        messagesManager.debug("&6Initializing commands and events");
-
-        setVersion();
-        registerCommands();
-        registerEvents();
-
-        messagesManager.debug("&6Setting up placeholders on PlaceholderAPI");
-
-        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            new PAPIExpansion(this).register();
-        }
-
-        messagesManager.console("&6        __ ___");
-        messagesManager.console("&5  \\  / &6|    |    &dVoiid &eCountdown Timer");
-        messagesManager.console("&5   \\/  &6|__  |    &8Running v" + version + " on " + serverName + " (" + cleanVersion + ")");
-        messagesManager.console("");
-
-        messagesManager.debug("&6Setting up bStats metrics");
-
-        new Metrics(this, 26790);
-
-        dependencyManager = new DependencyManager(this);
-        dynamicsManager = new DynamicsManager(this);
-        updateChecker = new UpdateChecker(version);
-
-        messagesManager.debug("&6Checking for updates");
-
-        checkUpdates(updateChecker.check());
-
-        messagesManager.debug("&6Checking if there is a timer state");
-
-        timerStateManager = new TimerStateManager(this);
-        timerStateManager.loadState();
-
-        messagesManager.debug("&6Loading expansions");
-
-        expansionManager = new ExpansionManager(this);
-        expansionManager.loadExpansions();
+        new PluginBootstrap(this).enable();
     }
 
     public void onDisable() {
-        messagesManager.debug("&6Checking for an active timer");
-        
-        if (timerStateManager != null && configsManager.getMainConfigManager().isSave_state_timers()) {
-            timerStateManager.saveState();
-        }
-
-        messagesManager.debug("&6Disabling expansions");
-
-        if (expansionManager != null) {
-            expansionManager.shutdown();
-        }
-
-        messagesManager.console(prefix+"&aHas been disabled! Goodbye ;)");
+        new PluginShutdown(this).disable();
     }
 
     public void setVersion(){
@@ -160,19 +90,26 @@ public final class VoiidCountdownTimer extends JavaPlugin {
     }
 
     public void registerCommands() {
-        this.getCommand("voiidcountdowntimer").setExecutor(new MainCommand());
+        new CommandRegistrar(this).register();
     }
 
     public void registerEvents() {
-        getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
+        new ListenerRegistrar(this).register();
     }
 
     public static VoiidCountdownTimer getInstance() {
         return instance;
     }
 
-    public UpdateChecker getUpdateChecker() {
-        return updateChecker;
+    public UpdateService getUpdateService() {
+        return updateService;
+    }
+
+    public voiidstudios.vct.api.update.UpdateChecker getUpdateChecker() {
+        if (updateService == null) {
+            return null;
+        }
+        return updateService.getUpdateChecker();
     }
 
     public void checkUpdates(UpdateCheckerResult result){
@@ -244,5 +181,91 @@ public final class VoiidCountdownTimer extends JavaPlugin {
 
     public static ExpansionManager getExpansionManager() {
         return expansionManager;
+    }
+
+    public void checkReloadSafety() {
+        if (Boolean.getBoolean(VCT_LOADED_PROPERTY)) {
+            sendConsoleUnstableReloadMessage();
+        } else {
+            System.setProperty(VCT_LOADED_PROPERTY, "true");
+        }
+    }
+
+    public void initializeConfigs() {
+        configsManager = new ConfigsManager(this);
+        configsManager.configure();
+
+        if (configsManager.getMainConfigManager().getConfig().contains("Messages")) {
+            sendConsoleLegacyMessagesConfigMessage();
+        }
+    }
+
+    public void initializeMessages() {
+        messagesManager = new MessagesManager(this);
+        MessagesManager.setPrefix(prefix);
+        messagesManager.loadLanguage(
+                configsManager.getMainConfigManager().getLanguage()
+        );
+
+        messagesManager.debug("&bDebug mode enabled, you will see many debug messages only on your server console! ;)");
+    }
+
+    public void initializePlaceholders() {
+        messagesManager.debug("&6Setting up placeholders on PlaceholderAPI");
+
+        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            new PAPIExpansion(this).register();
+        }
+    }
+
+    public void logStartupBanner() {
+        messagesManager.console("&6        __ ___");
+        messagesManager.console("&5  \\  / &6|    |    &dVoiid &eCountdown Timer");
+        messagesManager.console("&5   \\/  &6|__  |    &8Running v" + version + " on " + serverName + " (" + cleanVersion + ")");
+        messagesManager.console("");
+    }
+
+    public void initializeMetrics() {
+        messagesManager.debug("&6Setting up bStats metrics");
+        new Metrics(this, 26790);
+    }
+
+    public void initializeManagers() {
+        dependencyManager = new DependencyManager(this);
+        dynamicsManager = new DynamicsManager(this);
+        updateService = new UpdateService(this);
+    }
+
+    public void checkForUpdates() {
+        messagesManager.debug("&6Checking for updates");
+        updateService.checkForUpdates();
+    }
+
+    public void loadTimerState() {
+        messagesManager.debug("&6Checking if there is a timer state");
+        timerStateManager = new TimerStateManager(this);
+        timerStateManager.loadState();
+    }
+
+    public void loadExpansions() {
+        messagesManager.debug("&6Loading expansions");
+        expansionManager = new ExpansionManager(this);
+        expansionManager.loadExpansions();
+    }
+
+    public void shutdownTimerState() {
+        messagesManager.debug("&6Checking for an active timer");
+
+        if (timerStateManager != null && configsManager.getMainConfigManager().isSave_state_timers()) {
+            timerStateManager.saveState();
+        }
+    }
+
+    public void shutdownExpansions() {
+        messagesManager.debug("&6Disabling expansions");
+
+        if (expansionManager != null) {
+            expansionManager.shutdown();
+        }
     }
 }
